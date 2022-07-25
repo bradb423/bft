@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use line_col::LineColLookup;
 
 /// Raw Brainfuck Instruction
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Instruction {
     /// Represents the `>` character
     IncrementPointer,
@@ -146,6 +146,41 @@ impl BfProgram {
     pub fn filename(&self) -> &Path {
         &self.filename
     }
+
+    pub fn bracket_check(&self) -> Result<(), String> {
+        let mut opening_loops = Vec::new();
+        for instruction in self.instructions() {
+            if matches!(instruction.instruction(), Instruction::StartLoop) {
+                // If there is an opening bracket, add it to the Vector.
+                opening_loops.push(instruction);
+            } else if matches!(instruction.instruction(), Instruction::EndLoop) {
+                // If there is an already existing opening bracket, then it will
+                // remove the last opening bracket from the Vector.
+                // However, if there is no opening bracket, then there is one
+                // too many closing brackets, and so this is not a valid program
+                match opening_loops.pop() {
+                    Some(_) => (),
+                    None => {
+                        return Err(format!(
+                            "Unexpected ']' at line: {} and column: {}",
+                            instruction.line(),
+                            instruction.column()
+                        ))
+                    }
+                }
+            }
+        }
+        // If there is another opening bracket left, then there are too many,
+        // and so the program is not valid.
+        match opening_loops.pop() {
+            Some(instruction) => Err(format!(
+                "Too few ']' in the file with the last opening bracket at line: {} and column: {}",
+                instruction.line(),
+                instruction.column()
+            )),
+            None => Ok(()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -154,10 +189,12 @@ mod tests {
 
     /// A function to mock a program with instructions for associated tests.
     fn mock_instructions() -> BfProgram {
-        let contents = String::from("+-this
+        let contents = String::from(
+            "+-this
             is not a
             []>< brainfuck
-                program! .,");
+                program! .,",
+        );
         let filename = "test.bf";
         BfProgram::new(contents, filename)
     }

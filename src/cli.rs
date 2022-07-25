@@ -15,6 +15,12 @@ pub(crate) struct Args {
     pub(crate) cells: usize,
 
     /// Whether or not the tape of the Virtual Machine can be extensible.
-    #[clap(name = "extensible", short, long, value_parser, default_value_t = false)]
+    #[clap(
+        name = "extensible",
+        short,
+        long,
+        value_parser,
+        default_value_t = false
+    )]
     pub(crate) extensible: bool,
 }
