@@ -3,6 +3,9 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+// Thanks to Kiran for the idea of using this crate
+use line_col::LineColLookup;
+
 /// Raw Brainfuck Instruction
 #[derive(Debug)]
 pub enum Instruction {
@@ -42,6 +45,37 @@ impl Instruction {
     }
 }
 
+/// A struct containing the main information surrounding a Brainfuck instruction
+///
+/// This includes the raw instruction itself, along with the line and column
+/// number of the instruction.
+#[derive(Debug)]
+pub struct InstructionInfo {
+    instruction: Instruction,
+    position: (usize, usize),
+}
+
+impl InstructionInfo {
+    fn new(instruction: Instruction, position: (usize, usize)) -> Self {
+        Self {
+            instruction,
+            position,
+        }
+    }
+
+    pub fn instruction(&self) -> &Instruction {
+        &self.instruction
+    }
+
+    pub fn line(&self) -> &usize {
+        &self.position.0
+    }
+
+    pub fn column(&self) -> &usize {
+        &self.position.1
+    }
+}
+
 /// Produces a description of a Brainfuck instruction
 pub fn instruction_description(instruction: &Instruction) -> &str {
     match instruction {
@@ -60,7 +94,7 @@ pub fn instruction_description(instruction: &Instruction) -> &str {
 /// the filename of the program.
 #[derive(Debug)]
 pub struct BfProgram {
-    instructions: Vec<Instruction>,
+    instructions: Vec<InstructionInfo>,
     filename: PathBuf,
 }
 
@@ -71,9 +105,16 @@ impl BfProgram {
     where
         P: AsRef<Path>,
     {
+        // Once again, thanks to Kiran for the idea of using this crate
+        let lookup = LineColLookup::new(&contents);
+
         let instructions = contents
             .chars()
-            .filter_map(Instruction::char_to_instruction)
+            .enumerate()
+            .filter_map(|(n, c)| {
+                Instruction::char_to_instruction(c)
+                    .map(|instruction| InstructionInfo::new(instruction, lookup.get(n)))
+            })
             .collect();
         Self {
             instructions,
@@ -90,7 +131,7 @@ impl BfProgram {
         Ok(BfProgram::new(contents, filename))
     }
 
-    pub fn instructions(&self) -> &[Instruction] {
+    pub fn instructions(&self) -> &Vec<InstructionInfo> {
         &self.instructions
     }
 
@@ -101,9 +142,49 @@ impl BfProgram {
 
 #[cfg(test)]
 mod tests {
+    use crate::{BfProgram, Instruction};
+
+    fn mock_instructions() -> BfProgram {
+        let contents = String::from("+-this
+            is not a
+            []>< brainfuck
+                program! .,");
+        let filename = "test.bf";
+        BfProgram::new(contents, filename)
+    }
+
+    /// A check that the program is properly filtered, with any invalid
+    /// Brainfuck instructions ignored.
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn correct_filtering() {
+        let bf_program = mock_instructions();
+        let instructions = bf_program.instructions();
+
+        assert_eq!(instructions.len(), 8);
+    }
+
+    /// A check that the program has stored the instruction in the right order.
+    #[test]
+    fn correct_instructions() {
+        let bf_program = mock_instructions();
+        let instructions = bf_program.instructions();
+
+        // assert_eq!(instructions[0].instruction, Instruction::IncrementByte);
+    }
+
+    /// Test that the program has the right line numbers for each command in the
+    /// file.
+    #[test]
+    fn test_lines() {
+        let bf_program = mock_instructions();
+        let instructions = bf_program.instructions();
+    }
+
+    /// Test that the program has the right column numbers for each command in
+    /// the file.
+    #[test]
+    fn test_columns() {
+        let bf_program = mock_instructions();
+        let instructions = bf_program.instructions();
     }
 }

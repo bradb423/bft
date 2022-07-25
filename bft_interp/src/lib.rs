@@ -33,9 +33,11 @@ impl<T> VirtualMachine<T> {
         let filename = program.filename();
         for instruction in program.instructions() {
             println!(
-                "[{}] {}",
+                "[{} : {} : {} ] {}",
                 filename.display(),
-                instruction_description(instruction)
+                instruction.line(),
+                instruction.column(),
+                instruction_description(instruction.instruction())
             );
         }
     }
