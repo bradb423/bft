@@ -1,3 +1,6 @@
+use bft_types::instruction_description;
+use bft_types::BfProgram;
+
 /// A "Virtual Machine" for the Brainfuck program to be interpreted in.
 /// This struct consists of a Tape (an array of numbers) and a Head (a pointer
 /// to the a position in the array).
@@ -22,6 +25,18 @@ impl<T> VirtualMachine<T> {
             tape_length,
             tape_head: 0,
             growable,
+        }
+    }
+    /// Interpreter function for interpreting the program. Currently, this
+    /// just prints out the commands of the program
+    pub fn interpret(&self, program: &BfProgram) {
+        let filename = program.filename();
+        for instruction in program.instructions() {
+            println!(
+                "[{}] {}",
+                filename.display(),
+                instruction_description(instruction)
+            );
         }
     }
 }
