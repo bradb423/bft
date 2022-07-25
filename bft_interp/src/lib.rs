@@ -13,14 +13,14 @@ pub struct VirtualMachine<T> {
 }
 
 impl<T> VirtualMachine<T> {
-    pub fn new(mut tape_length: usize, tape_head: usize, growable: bool) -> Self {
+    pub fn new(mut tape_length: usize, growable: bool) -> Self {
         if tape_length == 0 {
             tape_length = 30000
         }
         Self {
             tape: Vec::with_capacity(tape_length),
             tape_length,
-            tape_head,
+            tape_head: 0,
             growable,
         }
     }
