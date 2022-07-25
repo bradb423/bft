@@ -16,6 +16,7 @@ pub struct VirtualMachine<T> {
 }
 
 impl<T> VirtualMachine<T> {
+    /// New implementation for the VirtualMachine struct.
     pub fn new(mut tape_length: usize, growable: bool) -> Self {
         if tape_length == 0 {
             tape_length = 30000

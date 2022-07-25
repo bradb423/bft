@@ -63,14 +63,20 @@ impl InstructionInfo {
         }
     }
 
+    /// Accessor method to retrieve the instruction out of the overall
+    /// InstructionInfo structure.
     pub fn instruction(&self) -> &Instruction {
         &self.instruction
     }
 
+    /// Accessor method to retrieve the line on which a given valid instruction
+    /// originates.
     pub fn line(&self) -> &usize {
         &self.position.0
     }
 
+    /// Accessor method to retrieve the column on which a given valid
+    /// instruction originates.
     pub fn column(&self) -> &usize {
         &self.position.1
     }
@@ -131,10 +137,12 @@ impl BfProgram {
         Ok(BfProgram::new(contents, filename))
     }
 
+    /// Accessor method to retrieve the instructions from a program.
     pub fn instructions(&self) -> &Vec<InstructionInfo> {
         &self.instructions
     }
 
+    /// Accessor method to retrieve the filename from a program.
     pub fn filename(&self) -> &Path {
         &self.filename
     }
@@ -144,6 +152,7 @@ impl BfProgram {
 mod tests {
     use crate::{BfProgram, Instruction};
 
+    /// A function to mock a program with instructions for associated tests.
     fn mock_instructions() -> BfProgram {
         let contents = String::from("+-this
             is not a
