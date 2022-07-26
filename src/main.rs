@@ -10,7 +10,7 @@ mod cli;
 fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     let bf_program = BfProgram::from_file(&arguments.filename)?;
     bf_program.bracket_check()?;
-    let interpreter = VirtualMachine::<u8>::new(arguments.cells, false);
+    let interpreter = VirtualMachine::<u8>::new(&bf_program, arguments.cells, arguments.extensible);
     interpreter.interpret(&bf_program);
     Ok(())
 }

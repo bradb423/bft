@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use line_col::LineColLookup;
 
 /// Raw Brainfuck Instruction
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Operation {
     /// Represents the `>` character
     IncrementPointer,
@@ -49,7 +49,7 @@ impl Operation {
 ///
 /// This includes the raw instruction itself, along with the line and column
 /// number of the instruction.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct InstructionInfo {
     operation: Operation,
     position: (usize, usize),
@@ -162,7 +162,8 @@ impl BfProgram {
                     Some(_) => (),
                     None => {
                         return Err(format!(
-                            "Unexpected ']' in the file {:?} at line: {} and column: {}",
+                            "Unexpected ']' in the file {:?} at line: {} \
+                            and column: {}",
                             self.filename(),
                             instruction.line(),
                             instruction.column(),
@@ -175,7 +176,8 @@ impl BfProgram {
         // and so the program is not valid.
         match opening_loops.pop() {
             Some(instruction) => Err(format!(
-                "Too few ']' in the file {:?} with the last opening bracket at line: {} and column: {}",
+                "Too few ']' in the file {:?} with the first unclosed bracket \
+                at line: {} and column: {}",
                 self.filename(),
                 instruction.line(),
                 instruction.column()
