@@ -1,8 +1,8 @@
 use bft_types::instruction_description;
 use bft_types::BfProgram;
 
-mod vm_error;
 mod cellkind;
+mod vm_error;
 
 /// A "Virtual Machine" for the Brainfuck program to be interpreted in.
 /// This struct consists of a Tape (an array of numbers) and a Head (a pointer
@@ -24,7 +24,10 @@ pub struct VirtualMachine<'a, T = u8> {
     growable: bool,
 }
 
-impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T> where T: cellkind::CellKind {
+impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T>
+where
+    T: cellkind::CellKind,
+{
     /// New implementation for the VirtualMachine struct.
     pub fn new(program: &'a BfProgram, mut tape_length: usize, growable: bool) -> Self {
         if tape_length == 0 {
@@ -87,7 +90,7 @@ impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T> where T: cellkind::CellKin
 
     pub fn move_left(&mut self) -> Result<(), vm_error::VirtualMachineError> {
         self.check_head_location()?;
-        self.tape_head -=1;
+        self.tape_head -= 1;
         self.check_head_location()?;
         Ok(())
     }

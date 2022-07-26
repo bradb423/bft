@@ -152,10 +152,10 @@ impl BfProgram {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BfProgram, ops::Operation};
+    use crate::{ops::Operation, BfProgram};
 
     /// A function to mock a program with instructions for associated tests.
-    fn mock_instructions() -> BfProgram {
+    fn mock_working_program() -> BfProgram {
         let contents = String::from(
             "+-this
             is not a
@@ -170,34 +170,89 @@ mod tests {
     /// Brainfuck instructions ignored.
     #[test]
     fn correct_filtering() {
-        let bf_program = mock_instructions();
+        let bf_program = mock_working_program();
         let instructions = bf_program.instructions();
 
+        // Here there are 106 individual brainfuck commands
         assert_eq!(instructions.len(), 8);
     }
 
     /// A check that the program has stored the instruction in the right order.
     #[test]
     fn correct_instructions() {
-        let bf_program = mock_instructions();
+        let bf_program = mock_working_program();
         let instructions = bf_program.instructions();
 
-        // assert_eq!(instructions[0].instruction, Instruction::IncrementByte);
+        assert_eq!(instructions[0].operation, Operation::IncrementByte);
+        assert_eq!(instructions[1].operation, Operation::DecrementByte);
+        assert_eq!(instructions[2].operation, Operation::StartLoop);
+        assert_eq!(instructions[3].operation, Operation::EndLoop);
+        assert_eq!(instructions[4].operation, Operation::IncrementPointer);
+        assert_eq!(instructions[5].operation, Operation::DecrementPointer);
+        assert_eq!(instructions[6].operation, Operation::OutputByte);
+        assert_eq!(instructions[7].operation, Operation::InputByte);
     }
 
     /// Test that the program has the right line numbers for each command in the
     /// file.
     #[test]
     fn test_lines() {
-        let bf_program = mock_instructions();
+        let bf_program = mock_working_program();
         let instructions = bf_program.instructions();
+
+        assert_eq!(instructions[0].position.0, 1);
+        assert_eq!(instructions[1].position.0, 1);
+        assert_eq!(instructions[2].position.0, 3);
+        assert_eq!(instructions[3].position.0, 3);
+        assert_eq!(instructions[4].position.0, 3);
+        assert_eq!(instructions[5].position.0, 3);
+        assert_eq!(instructions[6].position.0, 4);
+        assert_eq!(instructions[7].position.0, 4);
     }
 
     /// Test that the program has the right column numbers for each command in
     /// the file.
     #[test]
     fn test_columns() {
-        let bf_program = mock_instructions();
+        let bf_program = mock_working_program();
         let instructions = bf_program.instructions();
+
+        assert_eq!(instructions[0].position.1, 1);
+        assert_eq!(instructions[1].position.1, 2);
+        assert_eq!(instructions[2].position.1, 13);
+        assert_eq!(instructions[3].position.1, 14);
+        assert_eq!(instructions[4].position.1, 15);
+        assert_eq!(instructions[5].position.1, 16);
+        assert_eq!(instructions[6].position.1, 26);
+        assert_eq!(instructions[7].position.1, 27);
+    }
+
+    /// A function to mock a program which has too few closing square brackets.
+    fn too_few_closings() -> BfProgram {
+        let contents = String::from("[[]");
+        let filename = "test.bf";
+        BfProgram::new(contents, filename)
+    }
+
+    /// A function to mock a program which has too many closing square brackets,
+    /// leading to a loop being ended when there is no loop to be ended.
+    fn unexpected_closing() -> BfProgram {
+        let contents = String::from("[[][]]]");
+        let filename = "test.bf";
+        BfProgram::new(contents, filename)
+    }
+
+    /// A test to check that the bracket checker can correctly identify the
+    /// problems in each of the bad programs, while not reporting errors in the
+    /// case where the brackets are balanced.
+    #[test]
+    fn test_bracket_matcher() {
+        let good_program = mock_working_program();
+        let bad_program_1 = too_few_closings();
+        let bad_program_2 = unexpected_closing();
+
+        assert!(good_program.bracket_check().is_ok());
+        assert!(bad_program_1.bracket_check().is_err());
+        assert!(bad_program_2.bracket_check().is_err());
     }
 }
