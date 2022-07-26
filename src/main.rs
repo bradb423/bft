@@ -1,16 +1,29 @@
 use bft_interp::VirtualMachine;
 use bft_types::BfProgram;
-use clap::Parser;
+use clap::{crate_name, Parser};
 use std::error::Error;
+use std::process::exit;
 
 mod cli;
 
 /// Main entry point of the program
-fn main() -> Result<(), Box<dyn Error>> {
-    let arguments = cli::Args::parse();
-    let bf_program = BfProgram::from_file(arguments.filename)?;
+fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
+    let bf_program = BfProgram::from_file(&arguments.filename)?;
     bf_program.bracket_check()?;
     let interpreter = VirtualMachine::<u8>::new(arguments.cells, false);
     interpreter.interpret(&bf_program);
     Ok(())
+}
+
+fn main() {
+    let arguments = cli::Args::parse();
+
+    // Deal with the error that could arise from executing the program
+    exit(match run_bft(&arguments) {
+        Ok(_) => 0,
+        Err(err) => {
+            println!("{}: {}", crate_name!(), err);
+            1
+        }
+    })
 }
