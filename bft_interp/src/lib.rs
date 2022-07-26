@@ -38,7 +38,7 @@ impl<T> VirtualMachine<T> {
                 filename.display(),
                 instruction.line(),
                 instruction.column(),
-                instruction_description(instruction.instruction())
+                instruction_description(instruction.operation())
             );
         }
     }
