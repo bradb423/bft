@@ -3,47 +3,10 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+mod ops;
+
 // Thanks to Kiran for the idea of using this crate
 use line_col::LineColLookup;
-
-/// Raw Brainfuck Instruction
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Operation {
-    /// Represents the `>` character
-    IncrementPointer,
-    /// Represents the `<` character
-    DecrementPointer,
-    /// Represents the `+` character
-    IncrementByte,
-    /// Represents the `-` character
-    DecrementByte,
-    /// Represents the `.` character
-    OutputByte,
-    /// Represents the `,` character
-    InputByte,
-    /// Represents the `[` character
-    StartLoop,
-    /// Represents the `]` character
-    EndLoop,
-}
-
-impl Operation {
-    /// Converts a character in a Brainfuck program into a raw instruction.
-    /// Returns None if the character is not a valid Brainfuck instruction.
-    fn char_to_operation(c: char) -> Option<Operation> {
-        match c {
-            '>' => Some(Operation::IncrementPointer),
-            '<' => Some(Operation::DecrementPointer),
-            '+' => Some(Operation::IncrementByte),
-            '-' => Some(Operation::DecrementByte),
-            '.' => Some(Operation::OutputByte),
-            ',' => Some(Operation::InputByte),
-            '[' => Some(Operation::StartLoop),
-            ']' => Some(Operation::EndLoop),
-            _ => None,
-        }
-    }
-}
 
 /// A struct containing the main information surrounding a Brainfuck instruction
 ///
@@ -51,12 +14,12 @@ impl Operation {
 /// number of the instruction.
 #[derive(Debug, Clone, Copy)]
 pub struct InstructionInfo {
-    operation: Operation,
+    operation: ops::Operation,
     position: (usize, usize),
 }
 
 impl InstructionInfo {
-    fn new(operation: Operation, position: (usize, usize)) -> Self {
+    fn new(operation: ops::Operation, position: (usize, usize)) -> Self {
         Self {
             operation,
             position,
@@ -65,7 +28,7 @@ impl InstructionInfo {
 
     /// Accessor method to retrieve the instruction out of the overall
     /// InstructionInfo structure.
-    pub fn operation(&self) -> &Operation {
+    pub fn operation(&self) -> &ops::Operation {
         &self.operation
     }
 
@@ -83,16 +46,16 @@ impl InstructionInfo {
 }
 
 /// Produces a description of a Brainfuck instruction
-pub fn instruction_description(instruction: &Operation) -> &str {
+pub fn instruction_description(instruction: &ops::Operation) -> &str {
     match instruction {
-        Operation::IncrementPointer => "Increment the Data Pointer",
-        Operation::DecrementPointer => "Decrement the Data Pointer",
-        Operation::IncrementByte => "Increment the byte at the current pointer",
-        Operation::DecrementByte => "Decrement the byte at the current pointer",
-        Operation::OutputByte => "Output the byte at the current pointer",
-        Operation::InputByte => "Accept one byte of input at the current pointer",
-        Operation::StartLoop => "Start a loop",
-        Operation::EndLoop => "End a loop",
+        ops::Operation::IncrementPointer => "Increment the Data Pointer",
+        ops::Operation::DecrementPointer => "Decrement the Data Pointer",
+        ops::Operation::IncrementByte => "Increment the byte at the current pointer",
+        ops::Operation::DecrementByte => "Decrement the byte at the current pointer",
+        ops::Operation::OutputByte => "Output the byte at the current pointer",
+        ops::Operation::InputByte => "Accept one byte of input at the current pointer",
+        ops::Operation::StartLoop => "Start a loop",
+        ops::Operation::EndLoop => "End a loop",
     }
 }
 
@@ -118,7 +81,7 @@ impl BfProgram {
             .chars()
             .enumerate()
             .filter_map(|(n, c)| {
-                Operation::char_to_operation(c)
+                ops::Operation::char_to_operation(c)
                     .map(|instruction| InstructionInfo::new(instruction, lookup.get(n)))
             })
             .collect();
@@ -150,10 +113,10 @@ impl BfProgram {
     pub fn bracket_check(&self) -> Result<(), String> {
         let mut opening_loops = Vec::new();
         for instruction in self.instructions() {
-            if matches!(instruction.operation(), Operation::StartLoop) {
+            if matches!(instruction.operation(), ops::Operation::StartLoop) {
                 // If there is an opening bracket, add it to the Vector.
                 opening_loops.push(instruction);
-            } else if matches!(instruction.operation(), Operation::EndLoop) {
+            } else if matches!(instruction.operation(), ops::Operation::EndLoop) {
                 // If there is an already existing opening bracket, then it will
                 // remove the last opening bracket from the Vector.
                 // However, if there is no opening bracket, then there is one
@@ -189,7 +152,7 @@ impl BfProgram {
 
 #[cfg(test)]
 mod tests {
-    use crate::{BfProgram, Operation};
+    use crate::{BfProgram, ops::Operation};
 
     /// A function to mock a program with instructions for associated tests.
     fn mock_instructions() -> BfProgram {

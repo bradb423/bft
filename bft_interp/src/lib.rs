@@ -1,8 +1,8 @@
-use thiserror::Error;
-
 use bft_types::instruction_description;
 use bft_types::BfProgram;
-use bft_types::InstructionInfo;
+
+mod vm_error;
+mod cellkind;
 
 /// A "Virtual Machine" for the Brainfuck program to be interpreted in.
 /// This struct consists of a Tape (an array of numbers) and a Head (a pointer
@@ -24,26 +24,7 @@ pub struct VirtualMachine<'a, T = u8> {
     growable: bool,
 }
 
-/// Trait to define extra methods for incrementing and decrementing the values
-/// in the cells of the Brainfuck program.
-pub trait CellKind {
-    /// Wrapped incrementation of the value in a given cell
-    fn increment(&self) -> Self;
-    /// Wrapped decrementation of the value in a given cell
-    fn decrement(&self) -> Self;
-}
-
-impl CellKind for u8 {
-    fn increment(&self) -> Self {
-        self.wrapping_add(1)
-    }
-
-    fn decrement(&self) -> Self {
-        self.wrapping_sub(1)
-    }
-}
-
-impl<'a, T: CellKind> VirtualMachine<'a, T> where T: CellKind {
+impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T> where T: cellkind::CellKind {
     /// New implementation for the VirtualMachine struct.
     pub fn new(program: &'a BfProgram, mut tape_length: usize, growable: bool) -> Self {
         if tape_length == 0 {
@@ -74,9 +55,9 @@ impl<'a, T: CellKind> VirtualMachine<'a, T> where T: CellKind {
 
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
-    pub fn check_head_location(&self) -> Result<(), VirtualMachineError> {
+    pub fn check_head_location(&self) -> Result<(), vm_error::VirtualMachineError> {
         if self.tape_head > self.tape.len() {
-            return Err(VirtualMachineError::InvalidHeadPosition {
+            return Err(vm_error::VirtualMachineError::InvalidHeadPosition {
                 instruction_info: self.program.instructions()[self.tape_position],
                 filename: self.program.filename().display().to_string(),
                 position: self.tape_head,
@@ -94,7 +75,7 @@ impl<'a, T: CellKind> VirtualMachine<'a, T> where T: CellKind {
         self.tape[self.tape_head].decrement();
     }
 
-    pub fn move_right(&mut self) -> Result<(), VirtualMachineError> {
+    pub fn move_right(&mut self) -> Result<(), vm_error::VirtualMachineError> {
         // Check in case it has already moved into an invalid location.
         self.check_head_location()?;
         // Increment the head position.
@@ -104,31 +85,12 @@ impl<'a, T: CellKind> VirtualMachine<'a, T> where T: CellKind {
         Ok(())
     }
 
-    pub fn move_left(&mut self) -> Result<(), VirtualMachineError> {
+    pub fn move_left(&mut self) -> Result<(), vm_error::VirtualMachineError> {
         self.check_head_location()?;
         self.tape_head -=1;
         self.check_head_location()?;
         Ok(())
     }
-}
-
-/// An enum to represent the types of errors that the VirtualMachine may
-/// encounter when interpreting the program.
-#[derive(Debug, Error)]
-pub enum VirtualMachineError {
-    /// The head of the tape has been moved to an invalid position.
-    #[error(
-        "In {filename}: line {{instruction_info.line()}}, column \
-        {{instruction_info.column}} the head is moved to an invalid position \
-        by the command: {{instruction_info.operation}}. The current position \
-        is {position}, while it should be within 0 and {end_position}."
-    )]
-    InvalidHeadPosition {
-        instruction_info: InstructionInfo,
-        filename: String,
-        position: usize,
-        end_position: usize,
-    },
 }
 
 #[cfg(test)]
