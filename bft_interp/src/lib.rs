@@ -3,8 +3,8 @@ use std::io::Write;
 
 use bft_types::instruction_description;
 use bft_types::BfProgram;
-use vm_error::VirtualMachineError;
 use cellkind::CellKind;
+use vm_error::VirtualMachineError;
 
 mod cellkind;
 mod vm_error;
@@ -15,7 +15,6 @@ mod vm_error;
 ///
 /// Classical Brainfuck programs have byte size numbers (0 to 255) and the size
 /// of the array is by default set at 30,000.
-#[derive(Debug)]
 pub struct VirtualMachine<'a, T = u8> {
     /// The Brainfuck program
     program: &'a BfProgram,
@@ -31,7 +30,7 @@ pub struct VirtualMachine<'a, T = u8> {
 
 impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T>
 where
-    T: cellkind::CellKind,
+    T: cellkind::CellKind + std::default::Default + std::clone::Clone,
 {
     /// New implementation for the VirtualMachine struct.
     pub fn new(program: &'a BfProgram, mut tape_length: usize, growable: bool) -> Self {
@@ -40,7 +39,7 @@ where
         }
         Self {
             program,
-            tape: Vec::with_capacity(tape_length),
+            tape: vec![Default::default(); tape_length],
             tape_head: 0,
             program_position: 0,
             growable,
@@ -85,15 +84,17 @@ where
         self.tape[self.tape_head].decrement();
     }
 
-    /// Reads into the call at the head of the tape, will return a
+    /// Reads into the cell at the head of the tape, will return a
     /// VirtualMachineError if there is a failure to read
-    pub fn read_into_cell(
-        &mut self,
-        mut reader: impl Read,
-    ) -> Result<(), VirtualMachineError> {
+    pub fn read_into_cell(&mut self, mut reader: impl Read) -> Result<(), VirtualMachineError> {
         let mut buffer: [u8; 1] = [0; 1];
         match reader.read_exact(&mut buffer) {
             Ok(()) => {
+                println!(
+                    "self.tape_head = {}, tape_length = {}",
+                    self.tape_head,
+                    self.tape.len()
+                );
                 self.tape[self.tape_head] = CellKind::from_u8(buffer[0]);
                 Ok(())
             }
@@ -137,9 +138,135 @@ where
 
 #[cfg(test)]
 mod tests {
+    use bft_types::ops::Operation;
+    use bft_types::BfProgram;
+
+    use crate::VirtualMachine;
+
+    use std::io::Cursor;
+
+    /// A function to mock a program with instructions for associated tests.
+    fn mock_working_program() -> BfProgram {
+        let contents = String::from(
+            "+-this
+            is not a
+            []>< brainfuck
+                program! .,",
+        );
+        let filename = "test.bf";
+        BfProgram::new(contents, filename)
+    }
+
+    /// A check that the program is properly filtered, with any invalid
+    /// Brainfuck instructions ignored.
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn correct_filtering() {
+        let bf_program = mock_working_program();
+        let instructions = bf_program.instructions();
+
+        // Here there are 106 individual brainfuck commands
+        assert_eq!(instructions.len(), 8);
+    }
+
+    /// A check that the program has stored the instruction in the right order.
+    #[test]
+    fn correct_instructions() {
+        let bf_program = mock_working_program();
+        let instructions = bf_program.instructions();
+
+        assert_eq!(instructions[0].operation(), &Operation::IncrementByte);
+        assert_eq!(instructions[1].operation(), &Operation::DecrementByte);
+        assert_eq!(instructions[2].operation(), &Operation::StartLoop);
+        assert_eq!(instructions[3].operation(), &Operation::EndLoop);
+        assert_eq!(instructions[4].operation(), &Operation::IncrementPointer);
+        assert_eq!(instructions[5].operation(), &Operation::DecrementPointer);
+        assert_eq!(instructions[6].operation(), &Operation::OutputByte);
+        assert_eq!(instructions[7].operation(), &Operation::InputByte);
+    }
+
+    /// Test that the program has the right line numbers for each command in the
+    /// file.
+    #[test]
+    fn test_lines() {
+        let bf_program = mock_working_program();
+        let instructions = bf_program.instructions();
+
+        assert_eq!(instructions[0].line(), 1);
+        assert_eq!(instructions[1].line(), 1);
+        assert_eq!(instructions[2].line(), 3);
+        assert_eq!(instructions[3].line(), 3);
+        assert_eq!(instructions[4].line(), 3);
+        assert_eq!(instructions[5].line(), 3);
+        assert_eq!(instructions[6].line(), 4);
+        assert_eq!(instructions[7].line(), 4);
+    }
+
+    /// Test that the program has the right column numbers for each command in
+    /// the file.
+    #[test]
+    fn test_columns() {
+        let bf_program = mock_working_program();
+        let instructions = bf_program.instructions();
+
+        assert_eq!(instructions[0].column(), 1);
+        assert_eq!(instructions[1].column(), 2);
+        assert_eq!(instructions[2].column(), 13);
+        assert_eq!(instructions[3].column(), 14);
+        assert_eq!(instructions[4].column(), 15);
+        assert_eq!(instructions[5].column(), 16);
+        assert_eq!(instructions[6].column(), 26);
+        assert_eq!(instructions[7].column(), 27);
+    }
+
+    /// A function to mock a program which has too few closing square brackets.
+    fn too_few_closings() -> BfProgram {
+        let contents = String::from("[[]");
+        let filename = "test.bf";
+        BfProgram::new(contents, filename)
+    }
+
+    /// A function to mock a program which has too many closing square brackets,
+    /// leading to a loop being ended when there is no loop to be ended.
+    fn unexpected_closing() -> BfProgram {
+        let contents = String::from("[[][]]]");
+        let filename = "test.bf";
+        BfProgram::new(contents, filename)
+    }
+
+    /// A test to check that the bracket checker can correctly identify the
+    /// problems in each of the bad programs, while not reporting errors in the
+    /// case where the brackets are balanced.
+    #[test]
+    fn test_bracket_matcher() {
+        let good_program = mock_working_program();
+        let bad_program_1 = too_few_closings();
+        let bad_program_2 = unexpected_closing();
+
+        assert!(good_program.bracket_check().is_ok());
+        assert!(bad_program_1.bracket_check().is_err());
+        assert!(bad_program_2.bracket_check().is_err());
+    }
+
+    #[test]
+    fn test_read() {
+        let good_program = mock_working_program();
+        let mut vm = VirtualMachine::<u8>::new(&good_program, 0, false);
+
+        let reader = Cursor::new(vec![1u8, 2u8]);
+
+        assert!(vm.read_into_cell(reader).is_ok());
+        assert_eq!(vm.tape[vm.tape_head], 1u8);
+    }
+
+    #[test]
+    fn test_write() {
+        let good_program =mock_working_program();
+        let mut vm = VirtualMachine::<u8>::new(&good_program, 0, false);
+
+        let mut writer = Cursor::new(vec![1u8, 2u8]);
+
+        assert!(vm.write_out_of_cell(&mut writer).is_ok());
+        assert_eq!(vm.tape[vm.tape_head], 0u8);
+
     }
 }
