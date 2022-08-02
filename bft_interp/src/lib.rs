@@ -1,5 +1,10 @@
+use std::io::Read;
+use std::io::Write;
+
 use bft_types::instruction_description;
 use bft_types::BfProgram;
+use vm_error::VirtualMachineError;
+use cellkind::CellKind;
 
 mod cellkind;
 mod vm_error;
@@ -19,7 +24,7 @@ pub struct VirtualMachine<'a, T = u8> {
     /// The position of the head location of the tape
     tape_head: usize,
     /// The position of the interpreter in the program
-    tape_position: usize,
+    program_position: usize,
     /// Bool to indicate whether the tape can grow
     growable: bool,
 }
@@ -37,7 +42,7 @@ where
             program,
             tape: Vec::with_capacity(tape_length),
             tape_head: 0,
-            tape_position: 0,
+            program_position: 0,
             growable,
         }
     }
@@ -58,10 +63,10 @@ where
 
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
-    pub fn check_head_location(&self) -> Result<(), vm_error::VirtualMachineError> {
+    pub fn check_head_location(&self) -> Result<(), VirtualMachineError> {
         if self.tape_head > self.tape.len() {
-            return Err(vm_error::VirtualMachineError::InvalidHeadPosition {
-                instruction_info: self.program.instructions()[self.tape_position],
+            return Err(VirtualMachineError::InvalidHeadPosition {
+                instruction_info: self.program.instructions()[self.program_position],
                 filename: self.program.filename().display().to_string(),
                 position: self.tape_head,
                 end_position: self.tape.len(),
@@ -70,15 +75,48 @@ where
         Ok(())
     }
 
+    /// Increments the value in the cell at the head of the tape
     pub fn increment_cell_at_head(&mut self) {
         self.tape[self.tape_head].increment();
     }
 
+    /// Decrements the value in the cell at the head of the tape
     pub fn decrement_cell_at_head(&mut self) {
         self.tape[self.tape_head].decrement();
     }
 
-    pub fn move_right(&mut self) -> Result<(), vm_error::VirtualMachineError> {
+    /// Reads into the call at the head of the tape, will return a
+    /// VirtualMachineError if there is a failure to read
+    pub fn read_into_cell(
+        &mut self,
+        mut reader: impl Read,
+    ) -> Result<(), VirtualMachineError> {
+        let mut buffer: [u8; 1] = [0; 1];
+        match reader.read_exact(&mut buffer) {
+            Ok(()) => {
+                self.tape[self.tape_head] = CellKind::from_u8(buffer[0]);
+                Ok(())
+            }
+            Err(e) => Err(VirtualMachineError::IOError(e)),
+        }
+    }
+
+    /// Writes out of the cell at the head of the tape, will return a
+    /// VirtualMachineError if there is a failure to write
+    pub fn write_out_of_cell(
+        &mut self,
+        writer: &mut impl Write,
+    ) -> Result<(), VirtualMachineError> {
+        let mut buffer: [u8; 1] = [0; 1];
+        buffer[0] = self.tape[self.tape_head].into_u8();
+
+        writer.write_all(&buffer)?;
+
+        Ok(())
+    }
+
+    /// Moves the head of the tape to the right
+    pub fn move_right(&mut self) -> Result<(), VirtualMachineError> {
         // Check in case it has already moved into an invalid location.
         self.check_head_location()?;
         // Increment the head position.
@@ -88,7 +126,8 @@ where
         Ok(())
     }
 
-    pub fn move_left(&mut self) -> Result<(), vm_error::VirtualMachineError> {
+    /// Moves the head of the tape to the left
+    pub fn move_left(&mut self) -> Result<(), VirtualMachineError> {
         self.check_head_location()?;
         self.tape_head -= 1;
         self.check_head_location()?;

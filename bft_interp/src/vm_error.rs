@@ -19,4 +19,8 @@ pub enum VirtualMachineError {
         position: usize,
         end_position: usize,
     },
+
+    /// An error corresponding to the failure to read into a cell
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
 }
