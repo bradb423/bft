@@ -62,7 +62,7 @@ where
 
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
-    pub fn check_head_location(&self) -> Result<(), VirtualMachineError> {
+    pub fn check_head_location(&self) -> Result<usize, VirtualMachineError> {
         if self.tape_head > self.tape.len() {
             return Err(VirtualMachineError::InvalidHeadPosition {
                 instruction_info: self.program.instructions()[self.program_position],
@@ -71,7 +71,7 @@ where
                 end_position: self.tape.len(),
             });
         }
-        Ok(())
+        Ok(self.program_position)
     }
 
     /// Increments the value in the cell at the head of the tape
@@ -86,7 +86,7 @@ where
 
     /// Reads into the cell at the head of the tape, will return a
     /// VirtualMachineError if there is a failure to read
-    pub fn read_into_cell(&mut self, mut reader: impl Read) -> Result<(), VirtualMachineError> {
+    pub fn read_into_cell(&mut self, mut reader: impl Read) -> Result<usize, VirtualMachineError> {
         let mut buffer: [u8; 1] = [0; 1];
         match reader.read_exact(&mut buffer) {
             Ok(()) => {
@@ -96,7 +96,7 @@ where
                     self.tape.len()
                 );
                 self.tape[self.tape_head] = CellKind::from_u8(buffer[0]);
-                Ok(())
+                Ok(self.program_position + 1)
             }
             Err(e) => Err(VirtualMachineError::IOError(e)),
         }
@@ -117,22 +117,22 @@ where
     }
 
     /// Moves the head of the tape to the right
-    pub fn move_right(&mut self) -> Result<(), VirtualMachineError> {
+    pub fn move_right(&mut self) -> Result<usize, VirtualMachineError> {
         // Check in case it has already moved into an invalid location.
         self.check_head_location()?;
         // Increment the head position.
         self.tape_head += 1;
         // Check to see if it has moved into an invalid location now.
         self.check_head_location()?;
-        Ok(())
+        Ok(self.program_position + 1)
     }
 
     /// Moves the head of the tape to the left
-    pub fn move_left(&mut self) -> Result<(), VirtualMachineError> {
+    pub fn move_left(&mut self) -> Result<usize, VirtualMachineError> {
         self.check_head_location()?;
         self.tape_head -= 1;
         self.check_head_location()?;
-        Ok(())
+        Ok(self.program_position + 1)
     }
 }
 
@@ -247,6 +247,7 @@ mod tests {
         assert!(bad_program_2.bracket_check().is_err());
     }
 
+    /// A test to check that the read method works properly
     #[test]
     fn test_read() {
         let good_program = mock_working_program();
@@ -258,15 +259,15 @@ mod tests {
         assert_eq!(vm.tape[vm.tape_head], 1u8);
     }
 
+    /// A test to check that the write method works properly
     #[test]
     fn test_write() {
-        let good_program =mock_working_program();
+        let good_program = mock_working_program();
         let mut vm = VirtualMachine::<u8>::new(&good_program, 0, false);
 
         let mut writer = Cursor::new(vec![1u8, 2u8]);
 
         assert!(vm.write_out_of_cell(&mut writer).is_ok());
         assert_eq!(vm.tape[vm.tape_head], 0u8);
-
     }
 }
