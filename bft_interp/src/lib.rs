@@ -63,7 +63,9 @@ where
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
     pub fn check_head_location(&self) -> Result<usize, VirtualMachineError> {
-        if self.tape_head > self.tape.len() {
+        // This needs the `-` due to the fact that the tape_head is an integer
+        // and the tape instelf is being indexed from 0.
+        if self.tape_head > self.tape.len() -1 {
             return Err(VirtualMachineError::InvalidHeadPosition {
                 instruction_info: self.program.instructions()[self.program_position],
                 filename: self.program.filename().display().to_string(),
@@ -130,9 +132,18 @@ where
     /// Moves the head of the tape to the left
     pub fn move_left(&mut self) -> Result<usize, VirtualMachineError> {
         self.check_head_location()?;
-        self.tape_head -= 1;
-        self.check_head_location()?;
-        Ok(self.program_position + 1)
+        if self.tape_head == 0 {
+            return Err(VirtualMachineError::InvalidHeadPosition {
+                instruction_info: self.program.instructions()[self.program_position],
+                filename: self.program.filename().display().to_string(),
+                position: self.tape_head,
+                end_position: self.tape.len(),
+            });
+        } else {
+            self.tape_head -= 1;
+            self.check_head_location()?;
+            Ok(self.program_position + 1)
+        }
     }
 }
 
@@ -245,6 +256,53 @@ mod tests {
         assert!(good_program.bracket_check().is_ok());
         assert!(bad_program_1.bracket_check().is_err());
         assert!(bad_program_2.bracket_check().is_err());
+    }
+
+    /// A test to check that the program head can move backwards, it should
+    /// pass an error back if it moves backwards too many times.
+    #[test]
+    fn test_moving_backwards() {
+        let program = BfProgram::new(String::from("dklsjf.,<>;ahg"), "filename.bf");
+        let mut vm = VirtualMachine::<u8>::new(&program, 2, false);
+
+        // If the tape head moves forwards once, then moves backwards twice,
+        // and error should be generated.
+
+        assert!(vm.move_right().is_ok());
+        assert!(vm.move_left().is_ok());
+        assert!(vm.move_left().is_err());
+    }
+
+    /// A test to check that with a tape of length 1, the program cannot move
+    /// right
+    #[test]
+    fn test_failed_move_forwards() {
+        let program = BfProgram::new(String::from("dklsj,.<>f;ahg"), "filename.bf");
+        let mut vm = VirtualMachine::<u8>::new(&program, 1, false);
+
+        // If the tape head moves forwards too much, it will fall off the tape
+        // which is set to a length of 1.
+
+        assert!(vm.check_head_location().is_ok());
+        assert!(vm.move_right().is_err());
+        assert!(vm.check_head_location().is_err());
+    }
+
+    /// A test to check that with a program of length 2, the program can move
+    /// right exactly once
+    #[test]
+    fn test_moving_forwards() {
+        let program = BfProgram::new(String::from("dkl.,<>sjf;ahg"), "filename.bf");
+        let mut vm = VirtualMachine::<u8>::new(&program, 2, false);
+
+        // If the tape has length of 2, and starts at the first position, then
+        // it should be able to move just once
+
+        assert!(vm.check_head_location().is_ok());
+        assert!(vm.move_right().is_ok());
+        assert!(vm.check_head_location().is_ok());
+        assert!(vm.move_right().is_err());
+        assert!(vm.check_head_location().is_err())
     }
 
     /// A test to check that the read method works properly
