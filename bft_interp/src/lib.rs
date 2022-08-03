@@ -62,16 +62,23 @@ where
 
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
-    pub fn check_head_location(&self) -> Result<usize, VirtualMachineError> {
-        // This needs the `-` due to the fact that the tape_head is an integer
-        // and the tape instelf is being indexed from 0.
-        if self.tape_head > self.tape.len() -1 {
-            return Err(VirtualMachineError::InvalidHeadPosition {
-                instruction_info: self.program.instructions()[self.program_position],
-                filename: self.program.filename().display().to_string(),
-                position: self.tape_head,
-                end_position: self.tape.len(),
-            });
+    pub fn check_head_location(&mut self) -> Result<usize, VirtualMachineError> {
+        // This needs the `- 1` due to the fact that the tape_head is an integer
+        // and the tape itself is being indexed from 0.
+        // This should return an error if the head of the tape has moved to an
+        // invalid location, and the tape is not allowed to grow.
+        if self.tape_head > self.tape.len() - 1 {
+            // If the tape is growable, increase the length of the tape
+            if self.growable {
+                self.tape.push(Default::default());
+            } else {
+                return Err(VirtualMachineError::InvalidHeadPosition {
+                    instruction_info: self.program.instructions()[self.program_position],
+                    filename: self.program.filename().display().to_string(),
+                    position: self.tape_head,
+                    end_position: self.tape.len(),
+                });
+            }
         }
         Ok(self.program_position)
     }
