@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// Raw Brainfuck Instruction
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Operation {
@@ -33,6 +35,21 @@ impl Operation {
             '[' => Some(Operation::StartLoop),
             ']' => Some(Operation::EndLoop),
             _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Operation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Operation::IncrementPointer => write!(f, ">"),
+            Operation::DecrementPointer => write!(f, "<"),
+            Operation::IncrementByte => write!(f, "+"),
+            Operation::DecrementByte => write!(f, "-"),
+            Operation::OutputByte => write!(f, "."),
+            Operation::InputByte => write!(f, ","),
+            Operation::StartLoop => write!(f, "["),
+            Operation::EndLoop => write!(f, "]"),
         }
     }
 }
