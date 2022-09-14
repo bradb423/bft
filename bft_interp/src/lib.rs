@@ -1,13 +1,11 @@
 use std::io::Read;
 use std::io::Write;
 
-use bft_types::instruction_description;
 use bft_types::BfProgram;
+use bft_types::{ops::Operation, vm_error::VirtualMachineError};
 use cellkind::CellKind;
-use vm_error::VirtualMachineError;
 
 mod cellkind;
-mod vm_error;
 
 /// A "Virtual Machine" for the Brainfuck program to be interpreted in.
 /// This struct consists of a Tape (an array of numbers) and a Head (a pointer
@@ -30,10 +28,18 @@ pub struct VirtualMachine<'a, T = u8> {
 
 impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T>
 where
-    T: cellkind::CellKind + std::default::Default + std::clone::Clone,
+    T: cellkind::CellKind
+        + std::default::Default
+        + std::clone::Clone
+        + std::convert::From<u8>
+        + std::cmp::PartialEq,
 {
     /// New implementation for the VirtualMachine struct.
-    pub fn new(program: &'a BfProgram, mut tape_length: usize, growable: bool) -> Self {
+    pub fn new(
+        program: &'a BfProgram,
+        mut tape_length: usize,
+        growable: bool,
+    ) -> Self {
         if tape_length == 0 {
             tape_length = 30000
         }
@@ -47,22 +53,34 @@ where
     }
     /// Interpreter function for interpreting the program. Currently, this
     /// just prints out the commands of the program
-    pub fn interpret(&self, program: &BfProgram) {
-        let filename = program.filename();
-        for instruction in program.instructions() {
-            println!(
-                "[{} : {} : {} ] {}",
-                filename.display(),
-                instruction.line(),
-                instruction.column(),
-                instruction_description(instruction.operation())
-            );
+    pub fn interpret(
+        &mut self,
+        mut input: &mut impl Read,
+        mut output: &mut impl Write,
+    ) -> Result<(), VirtualMachineError> {
+        let instructions = self.program.instructions();
+        let last_position = instructions.len() - 1;
+        while self.program_position <= last_position {
+            let instruction = instructions[self.program_position];
+            self.program_position = match instruction.operation() {
+                &Operation::IncrementByte => self.increment_cell_at_head(),
+                &Operation::DecrementByte => self.decrement_cell_at_head(),
+                &Operation::IncrementPointer => self.move_right(),
+                &Operation::DecrementPointer => self.move_left(),
+                &Operation::OutputByte => self.write_out_of_cell(&mut output),
+                &Operation::InputByte => self.read_into_cell(&mut input),
+                &Operation::StartLoop => self.start_loop(),
+                &Operation::EndLoop => self.end_loop(),
+            }?;
         }
+        Ok(())
     }
 
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
-    pub fn check_head_location(&mut self) -> Result<usize, VirtualMachineError> {
+    pub fn check_head_location(
+        &mut self,
+    ) -> Result<usize, VirtualMachineError> {
         // This needs the `- 1` due to the fact that the tape_head is an integer
         // and the tape itself is being indexed from 0.
         // This should return an error if the head of the tape has moved to an
@@ -73,29 +91,52 @@ where
                 self.tape.push(Default::default());
             } else {
                 return Err(VirtualMachineError::InvalidHeadPosition {
-                    instruction_info: self.program.instructions()[self.program_position],
+                    line: self.program.instructions()[self.program_position]
+                        .line(),
+                    column: self.program.instructions()[self.program_position]
+                        .column(),
+                    operation: self.program.instructions()
+                        [self.program_position]
+                        .operation()
+                        .clone(),
                     filename: self.program.filename().display().to_string(),
                     position: self.tape_head,
-                    end_position: self.tape.len(),
+                    tape_length: self.tape.len(),
                 });
             }
         }
         Ok(self.program_position)
     }
 
+    /// Grabs the value of the tape at the current position, and clones it.
+    /// This is needed to increment and decrement the cell at this position.
+    pub fn tape_head_value(&mut self) -> T {
+        // This was the final thing that made this program actually work!
+        self.tape[self.tape_head].clone()
+    }
+
     /// Increments the value in the cell at the head of the tape
-    pub fn increment_cell_at_head(&mut self) {
-        self.tape[self.tape_head].increment();
+    pub fn increment_cell_at_head(
+        &mut self,
+    ) -> Result<usize, VirtualMachineError> {
+        self.tape[self.tape_head] = self.tape_head_value().increment();
+        Ok(self.program_position + 1)
     }
 
     /// Decrements the value in the cell at the head of the tape
-    pub fn decrement_cell_at_head(&mut self) {
-        self.tape[self.tape_head].decrement();
+    pub fn decrement_cell_at_head(
+        &mut self,
+    ) -> Result<usize, VirtualMachineError> {
+        self.tape[self.tape_head] = self.tape_head_value().decrement();
+        Ok(self.program_position + 1)
     }
 
     /// Reads into the cell at the head of the tape, will return a
     /// VirtualMachineError if there is a failure to read
-    pub fn read_into_cell(&mut self, mut reader: impl Read) -> Result<usize, VirtualMachineError> {
+    pub fn read_into_cell(
+        &mut self,
+        mut reader: impl Read,
+    ) -> Result<usize, VirtualMachineError> {
         let mut buffer: [u8; 1] = [0; 1];
         match reader.read_exact(&mut buffer) {
             Ok(()) => {
@@ -116,13 +157,13 @@ where
     pub fn write_out_of_cell(
         &mut self,
         writer: &mut impl Write,
-    ) -> Result<(), VirtualMachineError> {
+    ) -> Result<usize, VirtualMachineError> {
         let mut buffer: [u8; 1] = [0; 1];
         buffer[0] = self.tape[self.tape_head].into_u8();
 
         writer.write_all(&buffer)?;
 
-        Ok(())
+        Ok(self.program_position + 1)
     }
 
     /// Moves the head of the tape to the right
@@ -141,16 +182,54 @@ where
         self.check_head_location()?;
         if self.tape_head == 0 {
             return Err(VirtualMachineError::InvalidHeadPosition {
-                instruction_info: self.program.instructions()[self.program_position],
+                line: self.program.instructions()[self.program_position].line(),
+                column: self.program.instructions()[self.program_position]
+                    .column(),
+                operation: self.program.instructions()[self.program_position]
+                    .operation()
+                    .clone(),
                 filename: self.program.filename().display().to_string(),
                 position: self.tape_head,
-                end_position: self.tape.len(),
+                tape_length: self.tape.len(),
             });
         } else {
             self.tape_head -= 1;
             self.check_head_location()?;
             Ok(self.program_position + 1)
         }
+    }
+
+    /// Performs the unconditional jump forwards to the closing ']'.
+    pub fn start_loop(&mut self) -> Result<usize, VirtualMachineError> {
+        if self
+            .program
+            .bracket_matching_positions()
+            .contains_key(&self.program_position)
+        {
+            Ok(self.program.bracket_matching_positions()
+                [&self.program_position])
+        } else {
+            Err(VirtualMachineError::BracketFailure)
+        }
+    }
+
+    /// If the value of the cell at the head of the tape is non-zero, then this
+    /// function will find the instruction after the corresponding opening
+    /// bracket.
+    pub fn end_loop(&mut self) -> Result<usize, VirtualMachineError> {
+        let zero_value = match T::try_from(0u8) {
+            Ok(value) => value,
+            _ => panic!("This type T does not have a valid zero value!!!"),
+        };
+        if self.tape[self.tape_head] != zero_value {
+            for (key, value) in self.program.bracket_matching_positions().iter()
+            {
+                if *value == self.program_position {
+                    return Ok(*key + 1);
+                }
+            }
+        }
+        Ok(self.program_position + 1)
     }
 }
 
@@ -172,7 +251,7 @@ mod tests {
                 program! .,",
         );
         let filename = "test.bf";
-        BfProgram::new(contents, filename)
+        BfProgram::new(contents, filename).unwrap()
     }
 
     /// A check that the program is properly filtered, with any invalid
@@ -236,19 +315,24 @@ mod tests {
         assert_eq!(instructions[7].column(), 27);
     }
 
-    /// A function to mock a program which has too few closing square brackets.
-    fn too_few_closings() -> BfProgram {
+    /// A test which mocks the failure of the program to be created if the
+    /// brackets are not balanced. In this case, this is due to there being
+    /// too few closing brackets.
+    #[test]
+    fn too_few_closings() {
         let contents = String::from("[[]");
         let filename = "test.bf";
-        BfProgram::new(contents, filename)
+        assert!(BfProgram::new(contents, filename).is_err());
     }
 
-    /// A function to mock a program which has too many closing square brackets,
-    /// leading to a loop being ended when there is no loop to be ended.
-    fn unexpected_closing() -> BfProgram {
+    /// A test which mocks the failure of the program to be created if the
+    /// brackets are not balanced. In this case, this is due to there being
+    /// too many closing brackets.
+    #[test]
+    fn unexpected_closing() {
         let contents = String::from("[[][]]]");
         let filename = "test.bf";
-        BfProgram::new(contents, filename)
+        assert!(BfProgram::new(contents, filename).is_err());
     }
 
     /// A test to check that the bracket checker can correctly identify the
@@ -257,19 +341,17 @@ mod tests {
     #[test]
     fn test_bracket_matcher() {
         let good_program = mock_working_program();
-        let bad_program_1 = too_few_closings();
-        let bad_program_2 = unexpected_closing();
 
         assert!(good_program.bracket_check().is_ok());
-        assert!(bad_program_1.bracket_check().is_err());
-        assert!(bad_program_2.bracket_check().is_err());
     }
 
     /// A test to check that the program head can move backwards, it should
     /// pass an error back if it moves backwards too many times.
     #[test]
     fn test_moving_backwards() {
-        let program = BfProgram::new(String::from("dklsjf.,<>;ahg"), "filename.bf");
+        let program =
+            BfProgram::new(String::from("dklsjf.,<>;ahg"), "filename.bf")
+                .expect("Something went wrong with this test");
         let mut vm = VirtualMachine::<u8>::new(&program, 2, false);
 
         // If the tape head moves forwards once, then moves backwards twice,
@@ -284,7 +366,9 @@ mod tests {
     /// right
     #[test]
     fn test_failed_move_forwards() {
-        let program = BfProgram::new(String::from("dklsj,.<>f;ahg"), "filename.bf");
+        let program =
+            BfProgram::new(String::from("dklsj,.<>f;ahg"), "filename.bf")
+                .expect("Something went wrong with this test");
         let mut vm = VirtualMachine::<u8>::new(&program, 1, false);
 
         // If the tape head moves forwards too much, it will fall off the tape
@@ -299,7 +383,9 @@ mod tests {
     /// right exactly once
     #[test]
     fn test_moving_forwards() {
-        let program = BfProgram::new(String::from("dkl.,<>sjf;ahg"), "filename.bf");
+        let program =
+            BfProgram::new(String::from("dkl.,<>sjf;ahg"), "filename.bf")
+                .expect("Something went wrong with this test");
         let mut vm = VirtualMachine::<u8>::new(&program, 2, false);
 
         // If the tape has length of 2, and starts at the first position, then

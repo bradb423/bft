@@ -2,6 +2,8 @@ use bft_interp::VirtualMachine;
 use bft_types::BfProgram;
 use clap::{crate_name, Parser};
 use std::error::Error;
+use std::io::stdin;
+use std::io::stdout;
 use std::process::exit;
 
 mod cli;
@@ -10,8 +12,12 @@ mod cli;
 fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     let bf_program = BfProgram::from_file(&arguments.filename)?;
     bf_program.bracket_check()?;
-    let interpreter = VirtualMachine::<u8>::new(&bf_program, arguments.cells, arguments.extensible);
-    interpreter.interpret(&bf_program);
+    let mut interpreter = VirtualMachine::<u8>::new(
+        &bf_program,
+        arguments.cells,
+        arguments.extensible,
+    );
+    interpreter.interpret(&mut stdin(), &mut stdout())?;
     Ok(())
 }
 
