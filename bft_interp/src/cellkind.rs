@@ -10,7 +10,7 @@ pub trait CellKind {
     fn from_u8(value: u8) -> Self;
 
     /// Converts to u8 for IO
-    fn into_u8(&self) -> u8;
+    fn to_u8(&self) -> u8;
 
     fn from_usize(value: usize) -> Self;
 }
@@ -28,7 +28,7 @@ impl CellKind for u8 {
         value
     }
 
-    fn into_u8(&self) -> u8 {
+    fn to_u8(&self) -> u8 {
         *self
     }
 

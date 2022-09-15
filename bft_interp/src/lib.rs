@@ -62,15 +62,15 @@ where
         let last_position = instructions.len() - 1;
         while self.program_position <= last_position {
             let instruction = instructions[self.program_position];
-            self.program_position = match instruction.operation() {
-                &Operation::IncrementByte => self.increment_cell_at_head(),
-                &Operation::DecrementByte => self.decrement_cell_at_head(),
-                &Operation::IncrementPointer => self.move_right(),
-                &Operation::DecrementPointer => self.move_left(),
-                &Operation::OutputByte => self.write_out_of_cell(&mut output),
-                &Operation::InputByte => self.read_into_cell(&mut input),
-                &Operation::StartLoop => self.start_loop(),
-                &Operation::EndLoop => self.end_loop(),
+            self.program_position = match *instruction.operation() {
+                Operation::IncrementByte => self.increment_cell_at_head(),
+                Operation::DecrementByte => self.decrement_cell_at_head(),
+                Operation::IncrementPointer => self.move_right(),
+                Operation::DecrementPointer => self.move_left(),
+                Operation::OutputByte => self.write_out_of_cell(&mut output),
+                Operation::InputByte => self.read_into_cell(&mut input),
+                Operation::StartLoop => self.start_loop(),
+                Operation::EndLoop => self.end_loop(),
             }?;
         }
         Ok(())
@@ -95,10 +95,9 @@ where
                         .line(),
                     column: self.program.instructions()[self.program_position]
                         .column(),
-                    operation: self.program.instructions()
+                    operation: *self.program.instructions()
                         [self.program_position]
-                        .operation()
-                        .clone(),
+                        .operation(),
                     filename: self.program.filename().display().to_string(),
                     position: self.tape_head,
                     tape_length: self.tape.len(),
@@ -159,7 +158,7 @@ where
         writer: &mut impl Write,
     ) -> Result<usize, VirtualMachineError> {
         let mut buffer: [u8; 1] = [0; 1];
-        buffer[0] = self.tape[self.tape_head].into_u8();
+        buffer[0] = self.tape[self.tape_head].to_u8();
 
         writer.write_all(&buffer)?;
 
@@ -185,9 +184,8 @@ where
                 line: self.program.instructions()[self.program_position].line(),
                 column: self.program.instructions()[self.program_position]
                     .column(),
-                operation: self.program.instructions()[self.program_position]
-                    .operation()
-                    .clone(),
+                operation: *self.program.instructions()[self.program_position]
+                    .operation(),
                 filename: self.program.filename().display().to_string(),
                 position: self.tape_head,
                 tape_length: self.tape.len(),

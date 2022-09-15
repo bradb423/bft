@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// Raw Brainfuck Instruction
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Operation {
     /// Represents the `>` character
     IncrementPointer,
