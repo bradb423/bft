@@ -53,12 +53,8 @@ pub fn instruction_description(instruction: &Operation) -> &str {
     match instruction {
         Operation::IncrementPointer => "Increment the Data Pointer",
         Operation::DecrementPointer => "Decrement the Data Pointer",
-        Operation::IncrementByte => {
-            "Increment the byte at the current pointer"
-        }
-        Operation::DecrementByte => {
-            "Decrement the byte at the current pointer"
-        }
+        Operation::IncrementByte => "Increment the byte at the current pointer",
+        Operation::DecrementByte => "Decrement the byte at the current pointer",
         Operation::OutputByte => "Output the byte at the current pointer",
         Operation::InputByte => {
             "Accept one byte of input at the current pointer"
@@ -143,8 +139,7 @@ impl BfProgram {
             if matches!(instruction.operation(), Operation::StartLoop) {
                 // If there is an opening bracket, add it to the Vector.
                 opening_loops.push(instruction);
-            } else if matches!(instruction.operation(), Operation::EndLoop)
-            {
+            } else if matches!(instruction.operation(), Operation::EndLoop) {
                 // If there is an already existing opening bracket, then it will
                 // remove the last opening bracket from the Vector.
                 // However, if there is no opening bracket, then there is one
