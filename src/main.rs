@@ -11,7 +11,6 @@ mod cli;
 /// Main entry point of the program
 fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     let bf_program = BfProgram::from_file(&arguments.filename)?;
-    bf_program.bracket_check()?;
     let mut interpreter = VirtualMachine::<u8>::new(
         &bf_program,
         arguments.cells,

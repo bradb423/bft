@@ -105,7 +105,7 @@ impl BfProgram {
             bracket_matching_positions: HashMap::new(),
         };
         let new_matching_positions: HashMap<usize, usize> =
-            program.bracket_check_2()?;
+            program.bracket_check()?;
         program.bracket_matching_positions = new_matching_positions;
         Ok(program)
     }
@@ -133,46 +133,7 @@ impl BfProgram {
         &self.bracket_matching_positions
     }
 
-    pub fn bracket_check(&self) -> Result<(), String> {
-        let mut opening_loops = Vec::new();
-        for instruction in self.instructions() {
-            if matches!(instruction.operation(), Operation::StartLoop) {
-                // If there is an opening bracket, add it to the Vector.
-                opening_loops.push(instruction);
-            } else if matches!(instruction.operation(), Operation::EndLoop) {
-                // If there is an already existing opening bracket, then it will
-                // remove the last opening bracket from the Vector.
-                // However, if there is no opening bracket, then there is one
-                // too many closing brackets, and so this is not a valid program
-                match opening_loops.pop() {
-                    Some(_) => (),
-                    None => {
-                        return Err(format!(
-                            "Unexpected ']' in the file {:?} at line: {} \
-                            and column: {}",
-                            self.filename(),
-                            instruction.line(),
-                            instruction.column(),
-                        ))
-                    }
-                }
-            }
-        }
-        // If there is another opening bracket left, then there are too many,
-        // and so the program is not valid.
-        match opening_loops.pop() {
-            Some(instruction) => Err(format!(
-                "Too few ']' in the file {:?} with the first unclosed bracket \
-                at line: {} and column: {}",
-                self.filename(),
-                instruction.line(),
-                instruction.column()
-            )),
-            None => Ok(()),
-        }
-    }
-
-    pub fn bracket_check_2(
+    pub fn bracket_check(
         &self,
     ) -> Result<HashMap<usize, usize>, vm_error::VirtualMachineError> {
         let mut bracket_stack: Vec<usize> = Vec::new();
