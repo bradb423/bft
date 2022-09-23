@@ -5,6 +5,7 @@ use bft_types::BfProgram;
 use bft_types::{ops::Operation, vm_error::VirtualMachineError};
 
 mod cellkind;
+use cellkind::CellKind;
 
 const DEFAULT_TAPE_LENGTH: usize = 30_000;
 
@@ -29,7 +30,7 @@ pub struct VirtualMachine<'a, T> {
 
 impl<'a, T> VirtualMachine<'a, T>
 where
-    T: cellkind::CellKind
+    T: CellKind
         + std::default::Default
         + std::clone::Clone
         + Copy
