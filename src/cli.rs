@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 use clap::Parser;
 use std::path::PathBuf;
 

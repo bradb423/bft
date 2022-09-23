@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 /// Trait to define extra methods for incrementing and decrementing the values
 /// in the cells of the Brainfuck program.
 pub trait CellKind {

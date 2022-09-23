@@ -1,3 +1,8 @@
+//! `bft_interp`, containing the Virtual machine used for the interpretation of
+//! Brainfuck Programs, along with its methods.
+
+#![deny(missing_docs)]
+
 use std::io::Read;
 use std::io::Write;
 

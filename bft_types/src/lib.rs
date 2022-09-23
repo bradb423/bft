@@ -1,3 +1,8 @@
+//! bft_types, handling the types of operations. And creating the Brainfuck
+//! Program.
+
+#![deny(missing_docs)]
+
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -135,10 +140,17 @@ impl BfProgram {
         &self.filename
     }
 
+    /// A hashmap describing the positions of pairs of matching brackets
     pub fn bracket_matching_positions(&self) -> &HashMap<usize, usize> {
         &self.bracket_matching_positions
     }
 
+    /// Checks the program for brackets which can be paired, these will later
+    /// signify the loops within the Brainfuck Program. In the case of unmatched
+    /// brackets, this method will return an error detailing the position of the
+    /// unmatched bracket, along with its type. Furthermore, upon finding
+    /// unmatched brackets, `bft` will stop and no interpreting will happen from
+    /// this point onwards.
     pub fn bracket_check(
         &self,
     ) -> Result<HashMap<usize, usize>, vm_error::VirtualMachineError> {

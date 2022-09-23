@@ -1,3 +1,7 @@
+//! Main crate for bft, this is where the magic happens!
+
+#![deny(missing_docs)]
+
 use bft_interp::VirtualMachine;
 use bft_types::BfProgram;
 use clap::{crate_name, Parser};

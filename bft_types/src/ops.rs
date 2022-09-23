@@ -1,3 +1,8 @@
+//! The possible operations within a Brainfuck Program, and their methods.
+//! This includes the generation of Operation enums via the parsing of specific
+//! characters which are valid Brainfuck commands, and the display method of
+//! this enum.
+
 use std::fmt;
 
 /// Raw Brainfuck Instruction
