@@ -6,6 +6,8 @@ use bft_types::{ops::Operation, vm_error::VirtualMachineError};
 
 mod cellkind;
 
+const DEFAULT_TAPE_LENGTH: usize = 30_000;
+
 /// A "Virtual Machine" for the Brainfuck program to be interpreted in.
 /// This struct consists of a Tape (an array of numbers) and a Head (a pointer
 /// to the a position in the array).
@@ -40,7 +42,7 @@ where
         growable: bool,
     ) -> Self {
         if tape_length == 0 {
-            tape_length = 30000
+            tape_length = DEFAULT_TAPE_LENGTH;
         }
         Self {
             program,
