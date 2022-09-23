@@ -18,14 +18,16 @@ use line_col::LineColLookup;
 #[derive(Debug, Clone, Copy)]
 pub struct InstructionInfo {
     operation: Operation,
-    position: (usize, usize),
+    line: usize,
+    column: usize,
 }
 
 impl InstructionInfo {
-    fn new(operation: Operation, position: (usize, usize)) -> Self {
+    fn new(operation: Operation, line: usize, column: usize) -> Self {
         Self {
             operation,
-            position,
+            line,
+            column,
         }
     }
 
@@ -38,13 +40,13 @@ impl InstructionInfo {
     /// Accessor method to retrieve the line on which a given valid instruction
     /// originates.
     pub fn line(&self) -> usize {
-        self.position.0
+        self.line
     }
 
     /// Accessor method to retrieve the column on which a given valid
     /// instruction originates.
     pub fn column(&self) -> usize {
-        self.position.1
+        self.column
     }
 }
 
@@ -95,7 +97,7 @@ impl BfProgram {
             .enumerate()
             .filter_map(|(n, c)| {
                 Operation::char_to_operation(c).map(|instruction| {
-                    InstructionInfo::new(instruction, lookup.get(n))
+                    InstructionInfo::new(instruction, lookup.get(n).0, lookup.get(n).1)
                 })
             })
             .collect();
