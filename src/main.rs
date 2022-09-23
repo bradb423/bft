@@ -4,7 +4,7 @@ use clap::{crate_name, Parser};
 use std::error::Error;
 use std::io::stdin;
 use std::io::stdout;
-use std::process::exit;
+use std::process::ExitCode;
 
 mod cli;
 
@@ -21,15 +21,15 @@ fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn main() {
+fn main() -> ExitCode {
     let arguments = cli::Args::parse();
 
     // Deal with the error that could arise from executing the program
-    exit(match run_bft(&arguments) {
-        Ok(_) => 0,
+    match run_bft(&arguments) {
+        Ok(_) => ExitCode::SUCCESS,
         Err(err) => {
             println!("{}: {}", crate_name!(), err);
-            1
+            ExitCode::FAILURE
         }
-    })
+    }
 }
