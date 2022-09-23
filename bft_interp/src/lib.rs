@@ -3,7 +3,6 @@ use std::io::Write;
 
 use bft_types::BfProgram;
 use bft_types::{ops::Operation, vm_error::VirtualMachineError};
-use cellkind::CellKind;
 
 mod cellkind;
 
@@ -13,7 +12,7 @@ mod cellkind;
 ///
 /// Classical Brainfuck programs have byte size numbers (0 to 255) and the size
 /// of the array is by default set at 30,000.
-pub struct VirtualMachine<'a, T = u8> {
+pub struct VirtualMachine<'a, T> {
     /// The Brainfuck program
     program: &'a BfProgram,
     /// The tape of the virtual machine interpreting the program
@@ -26,12 +25,12 @@ pub struct VirtualMachine<'a, T = u8> {
     growable: bool,
 }
 
-impl<'a, T: cellkind::CellKind> VirtualMachine<'a, T>
+impl<'a, T> VirtualMachine<'a, T>
 where
     T: cellkind::CellKind
         + std::default::Default
         + std::clone::Clone
-        + std::convert::From<u8>
+        + Copy
         + std::cmp::PartialEq,
 {
     /// New implementation for the VirtualMachine struct.
@@ -107,18 +106,11 @@ where
         Ok(self.program_position)
     }
 
-    /// Grabs the value of the tape at the current position, and clones it.
-    /// This is needed to increment and decrement the cell at this position.
-    pub fn tape_head_value(&mut self) -> T {
-        // This was the final thing that made this program actually work!
-        self.tape[self.tape_head].clone()
-    }
-
     /// Increments the value in the cell at the head of the tape
     pub fn increment_cell_at_head(
         &mut self,
     ) -> Result<usize, VirtualMachineError> {
-        self.tape[self.tape_head] = self.tape_head_value().increment();
+        self.tape[self.tape_head] = self.tape[self.tape_head].increment();
         Ok(self.program_position + 1)
     }
 
@@ -126,7 +118,7 @@ where
     pub fn decrement_cell_at_head(
         &mut self,
     ) -> Result<usize, VirtualMachineError> {
-        self.tape[self.tape_head] = self.tape_head_value().decrement();
+        self.tape[self.tape_head] = self.tape[self.tape_head].decrement();
         Ok(self.program_position + 1)
     }
 
@@ -144,7 +136,7 @@ where
                     self.tape_head,
                     self.tape.len()
                 );
-                self.tape[self.tape_head] = CellKind::from_u8(buffer[0]);
+                self.tape[self.tape_head] = T::from_u8(buffer[0]);
                 Ok(self.program_position + 1)
             }
             Err(e) => Err(VirtualMachineError::IOError(e)),
@@ -215,10 +207,7 @@ where
     /// function will find the instruction after the corresponding opening
     /// bracket.
     pub fn end_loop(&mut self) -> Result<usize, VirtualMachineError> {
-        let zero_value = match T::try_from(0u8) {
-            Ok(value) => value,
-            _ => panic!("This type T does not have a valid zero value!!!"),
-        };
+        let zero_value = T::from_u8(0u8);
         if self.tape[self.tape_head] != zero_value {
             for (key, value) in self.program.bracket_matching_positions().iter()
             {
