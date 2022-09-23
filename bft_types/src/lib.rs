@@ -97,7 +97,11 @@ impl BfProgram {
             .enumerate()
             .filter_map(|(n, c)| {
                 Operation::char_to_operation(c).map(|instruction| {
-                    InstructionInfo::new(instruction, lookup.get(n).0, lookup.get(n).1)
+                    InstructionInfo::new(
+                        instruction,
+                        lookup.get(n).0,
+                        lookup.get(n).1,
+                    )
                 })
             })
             .collect();
