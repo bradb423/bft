@@ -55,22 +55,6 @@ impl InstructionInfo {
     }
 }
 
-/// Produces a description of a Brainfuck instruction
-pub fn instruction_description(instruction: &Operation) -> &str {
-    match instruction {
-        Operation::IncrementPointer => "Increment the Data Pointer",
-        Operation::DecrementPointer => "Decrement the Data Pointer",
-        Operation::IncrementByte => "Increment the byte at the current pointer",
-        Operation::DecrementByte => "Decrement the byte at the current pointer",
-        Operation::OutputByte => "Output the byte at the current pointer",
-        Operation::InputByte => {
-            "Accept one byte of input at the current pointer"
-        }
-        Operation::StartLoop => "Start a loop",
-        Operation::EndLoop => "End a loop",
-    }
-}
-
 /// A struct representing a Brainfuck program, with the set of instructions, and
 /// the filename of the program.
 #[derive(Debug)]
