@@ -13,8 +13,6 @@ pub trait CellKind {
 
     /// Converts to u8 for IO
     fn to_u8(&self) -> u8;
-
-    fn from_usize(value: usize) -> Self;
 }
 
 impl CellKind for u8 {
@@ -33,8 +31,31 @@ impl CellKind for u8 {
     fn to_u8(&self) -> u8 {
         *self
     }
+}
+#[cfg(test)]
+mod tests {
+    use super::CellKind;
 
-    fn from_usize(value: usize) -> Self {
-        value as u8
+    #[test]
+    fn test_increment() {
+        let t = 0u8;
+        assert_eq!(t.increment(), 1u8);
+    }
+
+    #[test]
+    fn test_increment_wrapping() {
+        let t = 255u8;
+        assert_eq!(t.increment(), 0u8);
+    }
+
+    #[test]
+    fn test_decrement() {
+        let t = 255u8;
+        assert_eq!(t.decrement(), 254u8);
+    }
+    #[test]
+    fn test_decrement_wrapping() {
+        let t = 0u8;
+        assert_eq!(t.decrement(), 255u8);
     }
 }
