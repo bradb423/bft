@@ -28,7 +28,7 @@ jobs:
           cargo install cargo-tarpaulin && cargo tarpaulin --all
 
       - name: Run "Hello World"
-        run: cargo run -- --filename hello-world.bf > result.txt
+        run: cargo run -- hello-world.bf > result.txt
 
       - name: Collect artifact
         uses: actions/upload-artifact@v3
