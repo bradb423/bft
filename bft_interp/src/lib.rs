@@ -69,7 +69,7 @@ where
         let last_position = instructions.len() - 1;
         while self.program_position <= last_position {
             let instruction = instructions[self.program_position];
-            self.program_position = match *instruction.operation() {
+            self.program_position = match instruction.operation() {
                 Operation::IncrementByte => self.increment_cell_at_head(),
                 Operation::DecrementByte => self.decrement_cell_at_head(),
                 Operation::IncrementPointer => self.move_right(),
@@ -102,7 +102,7 @@ where
                         .line(),
                     column: self.program.instructions()[self.program_position]
                         .column(),
-                    operation: *self.program.instructions()
+                    operation: self.program.instructions()
                         [self.program_position]
                         .operation(),
                     filename: self.program.filename().display().to_string(),
@@ -184,7 +184,7 @@ where
                 line: self.program.instructions()[self.program_position].line(),
                 column: self.program.instructions()[self.program_position]
                     .column(),
-                operation: *self.program.instructions()[self.program_position]
+                operation: self.program.instructions()[self.program_position]
                     .operation(),
                 filename: self.program.filename().display().to_string(),
                 position: self.tape_head,
@@ -266,14 +266,14 @@ mod tests {
         let bf_program = mock_working_program();
         let instructions = bf_program.instructions();
 
-        assert_eq!(instructions[0].operation(), &Operation::IncrementByte);
-        assert_eq!(instructions[1].operation(), &Operation::DecrementByte);
-        assert_eq!(instructions[2].operation(), &Operation::StartLoop);
-        assert_eq!(instructions[3].operation(), &Operation::EndLoop);
-        assert_eq!(instructions[4].operation(), &Operation::IncrementPointer);
-        assert_eq!(instructions[5].operation(), &Operation::DecrementPointer);
-        assert_eq!(instructions[6].operation(), &Operation::OutputByte);
-        assert_eq!(instructions[7].operation(), &Operation::InputByte);
+        assert_eq!(instructions[0].operation(), Operation::IncrementByte);
+        assert_eq!(instructions[1].operation(), Operation::DecrementByte);
+        assert_eq!(instructions[2].operation(), Operation::StartLoop);
+        assert_eq!(instructions[3].operation(), Operation::EndLoop);
+        assert_eq!(instructions[4].operation(), Operation::IncrementPointer);
+        assert_eq!(instructions[5].operation(), Operation::DecrementPointer);
+        assert_eq!(instructions[6].operation(), Operation::OutputByte);
+        assert_eq!(instructions[7].operation(), Operation::InputByte);
     }
 
     /// Test that the program has the right line numbers for each command in the

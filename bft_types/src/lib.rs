@@ -38,8 +38,8 @@ impl InstructionInfo {
 
     /// Accessor method to retrieve the instruction out of the overall
     /// InstructionInfo structure.
-    pub fn operation(&self) -> &Operation {
-        &self.operation
+    pub fn operation(&self) -> Operation {
+        self.operation
     }
 
     /// Accessor method to retrieve the line on which a given valid instruction
@@ -164,7 +164,7 @@ impl BfProgram {
         let mut latest_column: usize = 0;
         for (position, instruction) in self.instructions().iter().enumerate() {
             match instruction.operation() {
-                &Operation::StartLoop => {
+                Operation::StartLoop => {
                     // If we have an opening bracket, then we should add it to
                     // the stack
                     bracket_stack.push(position);
