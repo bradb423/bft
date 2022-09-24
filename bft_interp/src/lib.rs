@@ -416,4 +416,99 @@ mod tests {
         assert!(vm.write_out_of_cell(&mut writer).is_ok());
         assert_eq!(vm.tape[vm.tape_head], 0u8);
     }
+
+    #[test]
+    fn test_increment_cell_at_head() {
+        let contents = String::from("dx.knks");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let mut virtual_machine = VirtualMachine::<u8>::new(&program, 2, false);
+
+        // The virtual machine should start with a program position of 0 (the
+        // first instruction in the list of instructions)
+        assert_eq!(virtual_machine.program_position, 0);
+        // The machine should start with the tape head at 0
+        assert_eq!(virtual_machine.tape_head, 0);
+        // With a value of 0 in that cell
+        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+        // When incremented, it should return the next program position, which
+        // should be 1
+        assert_eq!(virtual_machine.increment_cell_at_head().unwrap(), 1);
+        // The value at the tape head should be now be 1
+        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 1);
+    }
+
+    #[test]
+    fn test_increment_cell_at_head_wrapping() {
+        let contents = String::from("dx.knks");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let mut virtual_machine = VirtualMachine::<u8>::new(&program, 2, false);
+
+        assert_eq!(virtual_machine.program_position, 0);
+        assert_eq!(virtual_machine.tape_head, 0);
+        // Set the value in the tape to 255
+        virtual_machine.tape[virtual_machine.tape_head] = 255;
+        assert_eq!(virtual_machine.increment_cell_at_head().unwrap(), 1);
+        // Upon incrementation, it should wrap around to 0
+        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+    }
+
+    #[test]
+    fn test_decrement_cell_at_head_wrapping() {
+        let contents = String::from("dx.knks");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let mut virtual_machine = VirtualMachine::<u8>::new(&program, 2, false);
+
+        assert_eq!(virtual_machine.program_position, 0);
+        assert_eq!(virtual_machine.tape_head, 0);
+        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+        assert_eq!(virtual_machine.decrement_cell_at_head().unwrap(), 1);
+        // In the case of decrementation, with the value originally at 0, it
+        // should wrap around to 255
+        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 255);
+    }
+
+    #[test]
+    fn test_decrement_cell_at_head() {
+        let contents = String::from("dx.knks");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let mut virtual_machine = VirtualMachine::<u8>::new(&program, 2, false);
+
+        assert_eq!(virtual_machine.program_position, 0);
+        assert_eq!(virtual_machine.tape_head, 0);
+        // Set the value in the tape to 1
+        virtual_machine.tape[virtual_machine.tape_head] = 1;
+        assert_eq!(virtual_machine.decrement_cell_at_head().unwrap(), 1);
+        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+    }
+
+    #[test]
+    fn test_start_loop() {
+        let contents = String::from("[some,.],.program");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let mut virtual_machine =
+            VirtualMachine::<u8>::new(&program, 10, false);
+
+        assert_eq!(virtual_machine.start_loop().unwrap(), 3);
+    }
+
+    #[test]
+    fn test_end_loop() {
+        let contents = String::from("[some,.],.program");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let mut virtual_machine =
+            VirtualMachine::<u8>::new(&program, 10, false);
+
+        // Set the head of the tape to 3 so it is at the closing loop
+        virtual_machine.tape_head = 3;
+        // In this case, it end_loop() should return the position of the
+        // instruction after the corresponding opening bracket, for this program
+        // it is at position 1.
+        assert_eq!(virtual_machine.end_loop().unwrap(), 1);
+    }
 }
