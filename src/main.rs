@@ -13,6 +13,7 @@ use std::process::ExitCode;
 mod cli;
 
 /// Main entry point of the program
+#[cfg(not(tarpaulin_include))]
 fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     let bf_program = BfProgram::from_file(&arguments.filename)?;
     let mut interpreter = VirtualMachine::<u8>::new(
@@ -24,6 +25,7 @@ fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(not(tarpaulin_include))]
 fn main() -> ExitCode {
     let arguments = cli::Args::parse();
 
