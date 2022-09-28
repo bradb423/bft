@@ -6,11 +6,43 @@ use bft_interp::VirtualMachine;
 use bft_types::BfProgram;
 use clap::{crate_name, Parser};
 use std::error::Error;
-use std::io::stdin;
-use std::io::stdout;
+use std::io::{stdin, stdout, Write};
 use std::process::ExitCode;
 
 mod cli;
+
+/// A wrapper around Write to ensure that a new line is written
+pub struct WriterWrapper<T> {
+    writer: T,
+    last_byte: u8,
+}
+
+impl<T> Write for WriterWrapper<T>
+where
+    T: Write,
+{
+    /// Wrapped write command which keeps a look on the last byte
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Some(b) = buf.last() {
+            self.last_byte = *b;
+        }
+        self.writer.write(buf)
+    }
+
+    /// Flush command
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.writer.flush()
+    }
+}
+
+impl<T> Drop for WriterWrapper<T> {
+    /// When the wrapper ends, a new line is added if there is not one already
+    fn drop(&mut self) {
+        if self.last_byte != b'\n' {
+            println!()
+        }
+    }
+}
 
 /// Main entry point of the program
 #[cfg(not(tarpaulin_include))]
@@ -21,7 +53,11 @@ fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
         arguments.cells,
         arguments.extensible,
     );
-    interpreter.interpret(&mut stdin(), &mut stdout())?;
+    let mut writer_wrapper = WriterWrapper {
+        writer: stdout(),
+        last_byte: 0u8,
+    };
+    interpreter.interpret(&mut stdin(), &mut writer_wrapper)?;
     Ok(())
 }
 

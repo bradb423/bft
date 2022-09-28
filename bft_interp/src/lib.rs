@@ -161,6 +161,7 @@ where
         buffer[0] = self.tape[self.tape_head].to_u8();
 
         writer.write_all(&buffer)?;
+        writer.flush()?;
 
         Ok(self.program_position + 1)
     }
