@@ -59,6 +59,7 @@ impl fmt::Display for Operation {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::Operation;
 
