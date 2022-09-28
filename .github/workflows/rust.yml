@@ -28,10 +28,16 @@ jobs:
           cargo install cargo-tarpaulin && cargo tarpaulin --all
 
       - name: Run "Hello World"
-        run: cargo run -- hello-world.bf > result.txt
+        run: cargo run -- bf-programs/hello-world.bf > hello-world.txt
+
+      - name: Run primes program (extensible)
+        run: cargo run -- -c 1 -e bf-programs/primes.bf > primes.txt
+
+      - name: Run cell-width program
+        run: cargo run -- bf-programs/cell-width.bf > cell-width.txt
 
       - name: Collect artifact
         uses: actions/upload-artifact@v3
         with:
-          name: hello-world
-          path: result.txt
+          name: artifacts
+          path: *.txt
