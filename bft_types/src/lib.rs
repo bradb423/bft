@@ -22,8 +22,11 @@ use line_col::LineColLookup;
 /// number of the instruction.
 #[derive(Debug, Clone, Copy)]
 pub struct InstructionInfo {
+    /// The raw instruction.
     operation: Operation,
+    /// The line on which the instruction is found.
     line: usize,
+    /// The column on which the instruction is found.
     column: usize,
 }
 
@@ -36,27 +39,25 @@ impl InstructionInfo {
         }
     }
 
-    /// Accessor method to retrieve the instruction out of the overall
-    /// InstructionInfo structure.
+    /// Retrieves the raw instruction.
     pub fn operation(&self) -> Operation {
         self.operation
     }
 
-    /// Accessor method to retrieve the line on which a given valid instruction
-    /// originates.
+    /// Retrieves the line on which a given instruction is found.
     pub fn line(&self) -> usize {
         self.line
     }
 
-    /// Accessor method to retrieve the column on which a given valid
-    /// instruction originates.
+    /// Retrieves the column on which a given instruction is found.
     pub fn column(&self) -> usize {
         self.column
     }
 }
 
-/// A struct representing a Brainfuck program, with the set of instructions, and
-/// the filename of the program.
+/// A Brainfuck program, with the set of instructions, the filename of the
+/// program, and the pairs of opening and closing brackets representing the
+/// loops of the program.
 #[derive(Debug)]
 pub struct BfProgram {
     /// Vector of instructions that are contained in the program.
@@ -71,6 +72,28 @@ pub struct BfProgram {
 impl BfProgram {
     /// Creates a new Brainfuck program, from a given string of contents and a
     /// filename.
+    ///
+    /// For example:
+    /// Given a Brainfuck program, named 'hello.bf', with the contents:
+    /// 'f[+-hello]+-,.'
+    /// The the program could be loaded from the following:
+    /// ```
+    /// use bft_types::{BfProgram, InstructionInfo, ops::Operation};
+    /// let contents: String = "f[+-hello]+-,.".to_string();
+    /// let filename = "hello.bf";
+    /// let new_program = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // We can check that the first instruction of the program is a'['
+    /// // by looking at the first element of the instructions vector and
+    /// // making sure that it is the start of a loop. We can also check its
+    /// // position, which should be line 1, column 2 (As any characters which
+    /// // are not valid Brainfuck characters are treated as comments, thus the
+    /// // 'f' at the beginning of the program is ignored.)
+    /// let first_instruction: InstructionInfo = new_program.instructions()[0];
+    /// assert_eq!(first_instruction.operation(), Operation::StartLoop);
+    /// assert_eq!(first_instruction.line(), 1);
+    /// assert_eq!(first_instruction.column(), 2);
+    /// ```
     pub fn new<P>(
         contents: String,
         filename: P,
@@ -106,6 +129,12 @@ impl BfProgram {
     }
 
     /// Reads directly from a file, to produce a Brainfuck program.
+    /// Given a program file named 'path/to/program.bf', we can load the
+    /// program from the file as follows:
+    /// ```
+    /// use bft_types::BfProgram;
+    /// let new_program = BfProgram::from_file("path/to/program.bf");
+    /// ```
     pub fn from_file<P>(filename: P) -> Result<BfProgram, Box<dyn Error>>
     where
         P: AsRef<Path>,
@@ -114,12 +143,12 @@ impl BfProgram {
         Ok(BfProgram::new(contents, filename)?)
     }
 
-    /// Accessor method to retrieve the instructions from a program.
+    /// Retrieves the list of instructions present in a given program.
     pub fn instructions(&self) -> &Vec<InstructionInfo> {
         &self.instructions
     }
 
-    /// Accessor method to retrieve the filename from a program.
+    /// Retrieves the filename of the program.
     pub fn filename(&self) -> &Path {
         &self.filename
     }
@@ -135,6 +164,34 @@ impl BfProgram {
     /// unmatched bracket, along with its type. Furthermore, upon finding
     /// unmatched brackets, `bft` will stop and no interpreting will happen from
     /// this point onwards.
+    /// For example:
+    /// ```
+    /// // Given a program named 'test.bf', with contents '[]', the bracket
+    /// // should give the hashmap of positions, and produce no error.
+    /// # use std::collections::HashMap;
+    /// # use bft_types::BfProgram;
+    /// let filename = "test.bf";
+    /// let contents = "[]".to_string();
+    /// let balanced_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// assert!(balanced_program.bracket_check().is_ok());
+    /// let bracket_positions: HashMap<usize,usize> = balanced_program.bracket_check().unwrap();
+    /// // We can then check that the first and second brackets are paired
+    /// // correctly. The first bracket is at the 0th position in a list of brackets, and the second
+    /// // bracket is at the 1st position.
+    /// assert_eq!(bracket_positions.get(&0).unwrap(), &1);
+    /// ```
+    /// In the case of an unbalanced program, the bracket_check() will return an
+    /// error as follows:
+    /// ```
+    /// # use bft_types::BfProgram;
+    /// let filename = "test.bf";
+    /// let contents = "[]]".to_string();
+    /// // As the bracket_check is called within the new() method, this should
+    /// // return an error from the get-go.
+    /// let unbalanced_program = BfProgram::new(contents, filename);
+    /// assert!(unbalanced_program.is_err());
+    /// ```
     pub fn bracket_check(
         &self,
     ) -> Result<HashMap<usize, usize>, vm_error::VirtualMachineError> {
