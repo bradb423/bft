@@ -1,6 +1,7 @@
 //! Main crate for bft, this is where the magic happens!
 
 #![deny(missing_docs)]
+#![cfg(not(tarpaulin_include))]
 
 use bft_interp::VirtualMachine;
 use bft_types::BfProgram;
@@ -46,7 +47,6 @@ impl<T> Drop for WriterWrapper<T> {
 
 /// Main entry point of the program. This takes the arguments passed in via the
 /// CLI and interprets the program.
-#[cfg(not(tarpaulin_include))]
 fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     let bf_program = BfProgram::from_file(&arguments.filename)?;
     let mut interpreter = VirtualMachine::<u8>::new(
