@@ -66,31 +66,46 @@ mod tests {
     #[test]
     fn test_display_increment_pointer() {
         let increment_pointer: Operation = Operation::IncrementPointer;
-        assert_eq!(increment_pointer.to_string(), "> : moves the data pointer to the right by one cell.");
+        assert_eq!(
+            increment_pointer.to_string(),
+            "> : moves the data pointer to the right by one cell."
+        );
     }
 
     #[test]
     fn test_display_decrement_pointer() {
         let decrement_pointer: Operation = Operation::DecrementPointer;
-        assert_eq!(decrement_pointer.to_string(), "< : moves the data pointer to the left by one cell.");
+        assert_eq!(
+            decrement_pointer.to_string(),
+            "< : moves the data pointer to the left by one cell."
+        );
     }
 
     #[test]
     fn test_display_increment_byte() {
         let increment_byte: Operation = Operation::IncrementByte;
-        assert_eq!(increment_byte.to_string(), "+ : increases the value stored at the current cell by 1.");
+        assert_eq!(
+            increment_byte.to_string(),
+            "+ : increases the value stored at the current cell by 1."
+        );
     }
 
     #[test]
     fn test_display_decrement_byte() {
         let decrement_byte: Operation = Operation::DecrementByte;
-        assert_eq!(decrement_byte.to_string(), "- : decreases the value stored at the current cell by 1.");
+        assert_eq!(
+            decrement_byte.to_string(),
+            "- : decreases the value stored at the current cell by 1."
+        );
     }
 
     #[test]
     fn test_display_output_byte() {
         let output_byte: Operation = Operation::OutputByte;
-        assert_eq!(output_byte.to_string(), ". : Outputs the byte at the current data pointer.");
+        assert_eq!(
+            output_byte.to_string(),
+            ". : Outputs the byte at the current data pointer."
+        );
     }
 
     #[test]
