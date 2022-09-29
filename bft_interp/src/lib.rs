@@ -41,7 +41,19 @@ where
         + Copy
         + std::cmp::PartialEq,
 {
-    /// New implementation for the VirtualMachine struct.
+    /// New implementation for the VirtualMachine struct, creates an instance
+    /// of the Virtual Machine for interpreting the Brainfuck Program.
+    /// ```
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    /// let filename = "program.bf";
+    /// let contents = "[.+_]".to_string();
+    /// let new_program = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // From the program we can create the Virtual Machine, in this case it
+    /// // has a tape length of 1, and the tape is not growable.
+    /// let vm = VirtualMachine::<u8>::new(&new_program, 1, false);
+    /// ```
     pub fn new(
         program: &'a BfProgram,
         mut tape_length: usize,
@@ -58,8 +70,31 @@ where
             growable,
         }
     }
-    /// Interpreter function for interpreting the program. Currently, this
-    /// just prints out the commands of the program
+    /// Interpreter method for the Virtual Machine. This will take and input and
+    /// output and will read and write from these. This is where the magic
+    /// happens, and results in the full interpretation of a Brainfuck Program.
+    ///
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    ///
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 1, false);
+    ///
+    /// // Set up the input and output
+    /// // Usually this will be stdin and stdout
+    /// // However for this case, we will use std::io::Cursor
+    /// let mut input = Cursor::new(Vec::<u8>::new());
+    /// let mut output = Cursor::new(Vec::<u8>::new());
+    /// vm.interpret(&mut input, &mut output);
+    ///
+    /// ```
     pub fn interpret(
         &mut self,
         mut input: &mut impl Read,
@@ -83,11 +118,52 @@ where
         Ok(())
     }
 
+    /// Provides the value of the tape at the head position (The data pointer).
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    ///
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 1, false);
+    ///
+    /// // As the VM has not been modified yet, the value at the tape head
+    /// // will be zero.
+    /// assert_eq!(vm.value_at_tape_head(), 0);
+    /// ```
+    pub fn value_at_tape_head(&self) -> T {
+        self.tape[self.tape_head]
+    }
+
+    /// Provides the location of the tape head (data pointer)
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    ///
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 1, false);
+    ///
+    /// // As the VM has not been modified yet, the tape head will be zero.
+    /// assert_eq!(vm.tape_head(), 0);
+    /// ```
+    pub fn tape_head(&self) -> usize {
+        self.tape_head
+    }
+
     /// Checks that the head of the tape has not moved into an invalid location.
     /// If it has, then it will throw a `VirtualMachineError` back out.
-    pub fn check_head_location(
-        &mut self,
-    ) -> Result<usize, VirtualMachineError> {
+    fn check_head_location(&mut self) -> Result<usize, VirtualMachineError> {
         // This needs the `- 1` due to the fact that the tape_head is an integer
         // and the tape itself is being indexed from 0.
         // This should return an error if the head of the tape has moved to an
@@ -114,7 +190,33 @@ where
         Ok(self.program_position)
     }
 
-    /// Increments the value in the cell at the head of the tape
+    /// Increments the value in the cell at the head of the tape.
+    /// Will return the location of the next position in the program to take if
+    /// successful.
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 0, false);
+    ///
+    /// // As this is the first instruction given to the program, this will
+    /// // return the position of the next instruction along (position 1) if it
+    /// // was successful.
+    /// assert_eq!(vm.increment_cell_at_head().unwrap(), 1);
+    ///
+    /// // The value in the cell at the current head should be 1.
+    /// assert_eq!(vm.value_at_tape_head(), 1);
+    ///
+    /// ```
+    /// The increment also deals with wrapping, for example:
+    /// If the value within the cell at the head of the tape is 255, then
+    /// incrementing the tape at this position will wrap the value round to 0.
     pub fn increment_cell_at_head(
         &mut self,
     ) -> Result<usize, VirtualMachineError> {
@@ -122,7 +224,25 @@ where
         Ok(self.program_position + 1)
     }
 
-    /// Decrements the value in the cell at the head of the tape
+    /// Decrements the value in the cell at the head of the tape.
+    /// Will return the location of the next position within the program if
+    /// successful.
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 0, false);
+    ///
+    /// vm.decrement_cell_at_head();
+    ///
+    /// assert_eq!(vm.value_at_tape_head(), 255);
+    /// ```
     pub fn decrement_cell_at_head(
         &mut self,
     ) -> Result<usize, VirtualMachineError> {
@@ -131,7 +251,9 @@ where
     }
 
     /// Reads into the cell at the head of the tape, will return a
-    /// VirtualMachineError if there is a failure to read
+    /// VirtualMachineError if there is a failure to read.
+    /// Will return the location of the next position within the program to take
+    /// if successful.
     pub fn read_into_cell(
         &mut self,
         mut reader: impl Read,
@@ -152,7 +274,9 @@ where
     }
 
     /// Writes out of the cell at the head of the tape, will return a
-    /// VirtualMachineError if there is a failure to write
+    /// VirtualMachineError if there is a failure to write.
+    /// Will return the location of the next position within the program to take
+    /// if successful.
     pub fn write_out_of_cell(
         &mut self,
         writer: &mut impl Write,
@@ -166,7 +290,33 @@ where
         Ok(self.program_position + 1)
     }
 
-    /// Moves the head of the tape to the right
+    /// Moves the head of the tape to the right. Will return the location of the
+    /// next position within the program to take if successful.
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 0, false);
+    ///
+    /// // As the VM has not done anything yet, the head of the tape should be
+    /// // at 0.
+    /// assert_eq!(vm.tape_head(), 0);
+    ///
+    /// // On moving right, the method should return the value of 1, as it is
+    /// // the location that "it thinks" the next program instruction to take
+    /// // will be
+    /// assert_eq!(vm.move_right().unwrap(), 1);
+    ///
+    /// // Now the head of the tape, should be 1, as it has been shifted to the
+    /// // right.
+    /// assert_eq!(vm.tape_head(), 1);
+    /// ```
     pub fn move_right(&mut self) -> Result<usize, VirtualMachineError> {
         // Check in case it has already moved into an invalid location.
         self.check_head_location()?;
@@ -177,7 +327,38 @@ where
         Ok(self.program_position + 1)
     }
 
-    /// Moves the head of the tape to the left
+    /// Moves the head of the tape to the left. Will return the location of the
+    /// next position within the program to take if successful.
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "++><[],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 0, false);
+    ///
+    /// // As the VM has not done anything yet, the head of the tape should be
+    /// // at 0.
+    /// assert_eq!(vm.tape_head(), 0);
+    ///
+    /// // If we move left here, the head of the tape will fall off the end of
+    /// // the tape, which shouldn't be allowed, in this case it will return an
+    /// // error.
+    /// assert!(vm.move_left().is_err());
+    ///
+    /// // Instead, we can move right first, and then move left, which would
+    /// // be allowed.
+    /// assert_eq!(vm.tape_head(), 0);
+    /// vm.move_right();
+    /// assert_eq!(vm.tape_head(), 1);
+    /// vm.move_left();
+    /// assert_eq!(vm.tape_head(), 0);
+    /// ```
+    ///
     pub fn move_left(&mut self) -> Result<usize, VirtualMachineError> {
         self.check_head_location()?;
         if self.tape_head == 0 {
@@ -199,6 +380,20 @@ where
     }
 
     /// Performs the unconditional jump forwards to the closing ']'.
+    /// ```
+    /// use std::io::Cursor;
+    /// use bft_types::BfProgram;
+    /// use bft_interp::VirtualMachine;
+    /// // Create the program.
+    /// let filename = "test.bf";
+    /// let contents = "[++><],.".to_string();
+    /// let new_program: BfProgram = BfProgram::new(contents, filename).unwrap();
+    ///
+    /// // Create the VM
+    /// let mut vm = VirtualMachine::<u8>::new(&new_program, 0, false);
+    ///
+    /// assert_eq!(vm.start_loop().unwrap(), 5);
+    /// ```
     pub fn start_loop(&mut self) -> Result<usize, VirtualMachineError> {
         if self
             .program
@@ -217,7 +412,7 @@ where
     /// bracket.
     pub fn end_loop(&mut self) -> Result<usize, VirtualMachineError> {
         let zero_value = T::from_u8(0u8);
-        if self.tape[self.tape_head] != zero_value {
+        if self.value_at_tape_head() != zero_value {
             for (key, value) in self.program.bracket_matching_positions().iter()
             {
                 if *value == self.program_position {
@@ -403,7 +598,7 @@ mod tests {
         let reader = Cursor::new(vec![1u8, 2u8]);
 
         assert!(vm.read_into_cell(reader).is_ok());
-        assert_eq!(vm.tape[vm.tape_head], 1u8);
+        assert_eq!(vm.value_at_tape_head(), 1u8);
     }
 
     /// A test to check that the write method works properly
@@ -415,7 +610,7 @@ mod tests {
         let mut writer = Cursor::new(vec![1u8, 2u8]);
 
         assert!(vm.write_out_of_cell(&mut writer).is_ok());
-        assert_eq!(vm.tape[vm.tape_head], 0u8);
+        assert_eq!(vm.value_at_tape_head(), 0u8);
     }
 
     #[test]
@@ -431,12 +626,12 @@ mod tests {
         // The machine should start with the tape head at 0
         assert_eq!(virtual_machine.tape_head, 0);
         // With a value of 0 in that cell
-        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+        assert_eq!(virtual_machine.value_at_tape_head(), 0);
         // When incremented, it should return the next program position, which
         // should be 1
         assert_eq!(virtual_machine.increment_cell_at_head().unwrap(), 1);
         // The value at the tape head should be now be 1
-        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 1);
+        assert_eq!(virtual_machine.value_at_tape_head(), 1);
     }
 
     #[test]
@@ -452,7 +647,7 @@ mod tests {
         virtual_machine.tape[virtual_machine.tape_head] = 255;
         assert_eq!(virtual_machine.increment_cell_at_head().unwrap(), 1);
         // Upon incrementation, it should wrap around to 0
-        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+        assert_eq!(virtual_machine.value_at_tape_head(), 0);
     }
 
     #[test]
@@ -464,11 +659,11 @@ mod tests {
 
         assert_eq!(virtual_machine.program_position, 0);
         assert_eq!(virtual_machine.tape_head, 0);
-        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+        assert_eq!(virtual_machine.value_at_tape_head(), 0);
         assert_eq!(virtual_machine.decrement_cell_at_head().unwrap(), 1);
         // In the case of decrementation, with the value originally at 0, it
         // should wrap around to 255
-        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 255);
+        assert_eq!(virtual_machine.value_at_tape_head(), 255);
     }
 
     #[test]
@@ -483,7 +678,7 @@ mod tests {
         // Set the value in the tape to 1
         virtual_machine.tape[virtual_machine.tape_head] = 1;
         assert_eq!(virtual_machine.decrement_cell_at_head().unwrap(), 1);
-        assert_eq!(virtual_machine.tape[virtual_machine.tape_head], 0);
+        assert_eq!(virtual_machine.value_at_tape_head(), 0);
     }
 
     #[test]
@@ -511,5 +706,23 @@ mod tests {
         // instruction after the corresponding opening bracket, for this program
         // it is at position 1.
         assert_eq!(virtual_machine.end_loop().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_value_at_tape_head() {
+        let contents = String::from("[some,.],.program");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let virtual_machine = VirtualMachine::<u8>::new(&program, 10, false);
+        assert_eq!(virtual_machine.value_at_tape_head(), 0);
+    }
+
+    #[test]
+    fn test_tape_head() {
+        let contents = String::from("[some,.],.program");
+        let filename = "test.bf";
+        let program = BfProgram::new(contents, filename).unwrap();
+        let virtual_machine = VirtualMachine::<u8>::new(&program, 10, false);
+        assert_eq!(virtual_machine.tape_head(), 0);
     }
 }
