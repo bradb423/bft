@@ -11,8 +11,8 @@ use std::process::ExitCode;
 
 mod cli;
 
-/// A wrapper around Write to ensure that a new line is written
-pub struct WriterWrapper<T> {
+/// A wrapper around Write to ensure that a new line is written.
+struct WriterWrapper<T> {
     writer: T,
     last_byte: u8,
 }
@@ -21,7 +21,7 @@ impl<T> Write for WriterWrapper<T>
 where
     T: Write,
 {
-    /// Wrapped write command which keeps a look on the last byte
+    /// Wrapped write command which keeps aa eye on the last byte.
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if let Some(b) = buf.last() {
             self.last_byte = *b;
@@ -29,14 +29,14 @@ where
         self.writer.write(buf)
     }
 
-    /// Flush command
+    /// Wrapped flush method, no real difference from the original flush method.
     fn flush(&mut self) -> std::io::Result<()> {
         self.writer.flush()
     }
 }
 
 impl<T> Drop for WriterWrapper<T> {
-    /// When the wrapper ends, a new line is added if there is not one already
+    /// When the wrapper ends, a new line is added if there is not one already.
     fn drop(&mut self) {
         if self.last_byte != b'\n' {
             println!()
@@ -44,7 +44,8 @@ impl<T> Drop for WriterWrapper<T> {
     }
 }
 
-/// Main entry point of the program
+/// Main entry point of the program. This takes the arguments passed in via the
+/// CLI and interprets the program.
 #[cfg(not(tarpaulin_include))]
 fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     let bf_program = BfProgram::from_file(&arguments.filename)?;
@@ -62,6 +63,7 @@ fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(not(tarpaulin_include))]
+/// The main program for the interpreter
 fn main() -> ExitCode {
     let arguments = cli::Args::parse();
 
