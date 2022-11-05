@@ -15,4 +15,4 @@ members = [
 [dependencies]
 bft_interp = { path = "bft_interp" }
 bft_types = { path = "bft_types" }
-clap = { version = "4.0.0", features = ["cargo", "derive"] }
+clap = { version = "4.0.19", features = ["cargo", "derive"] }
