@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "bft"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "bft_interp",
  "bft_types",
@@ -63,14 +63,14 @@ dependencies = [
 
 [[package]]
 name = "bft_interp"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "bft_types",
 ]
 
 [[package]]
 name = "bft_types"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "line-col",
  "thiserror",
