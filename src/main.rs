@@ -1,7 +1,6 @@
 //! Main crate for bft, this is where the magic happens!
 
 #![deny(missing_docs)]
-#![cfg(not(tarpaulin_include))]
 
 use bft_interp::VirtualMachine;
 use bft_types::BfProgram;
@@ -62,7 +61,6 @@ fn run_bft(arguments: &cli::Args) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[cfg(not(tarpaulin_include))]
 /// The main program for the interpreter
 fn main() -> ExitCode {
     let arguments = cli::Args::parse();
