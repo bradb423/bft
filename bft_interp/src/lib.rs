@@ -362,7 +362,7 @@ where
     pub fn move_left(&mut self) -> Result<usize, VirtualMachineError> {
         self.check_head_location()?;
         if self.tape_head == 0 {
-            return Err(VirtualMachineError::InvalidHeadPosition {
+            Err(VirtualMachineError::InvalidHeadPosition {
                 line: self.program.instructions()[self.program_position].line(),
                 column: self.program.instructions()[self.program_position]
                     .column(),
@@ -371,7 +371,7 @@ where
                 filename: self.program.filename().display().to_string(),
                 position: self.tape_head,
                 tape_length: self.tape.len(),
-            });
+            })
         } else {
             self.tape_head -= 1;
             self.check_head_location()?;
